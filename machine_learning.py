@@ -6,7 +6,76 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 from scipy import stats
+from utils.INI_Utility import *
+import gdown
+import pandas as pd
+import seaborn as sns
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from pathlib import Path
 
+
+def download_from_gdrive(url, filename):
+    # Extract the file ID from the URL
+    file_id = url.split('/')[-2]
+    download_url = f"https://drive.google.com/uc?id={file_id}"
+
+    # Download the file
+    if Path(filename).exists():
+        print(f"File '{filename}' already exists. Skipping download.")
+    else:
+        gdown.download(download_url, filename, quiet=False)
+        print(f"File downloaded as: {filename}")
+
+def get_df_Url():
+
+    ' the two url should be in config'
+    train_url = initialize_ini().get_value('DATASET', 'train_url')
+    valid_url = initialize_ini().get_value('DATASET', 'valid_url')
+    # Example usage
+
+    download_from_gdrive(train_url, 'train.csv')
+    download_from_gdrive(valid_url, 'valid.csv')
+
+    df_train = pd.read_csv('train.csv')
+    df_valid = pd.read_csv('valid.csv')
+
+    return df_train, df_valid
+
+
+def get_df_sns():
+    df_all = sns.load_dataset(initialize_ini().get_value('DATASET', 'sns_name'))  # ('tips')
+    return df_all, None
+
+
+def get_df(url_en):
+    """
+    url_en = True so retrive df from url_name
+    url_en = False so retrive df from sns name using url_name
+    """
+    if url_en:
+        return get_df_Url()
+    else:
+        return get_df_sns()
+
+
+def initialize_ini():
+
+    """        
+    :return: 
+    """""" Get value from section 'TRAIN'
+    learning_rate = ini_util.get_value('TRAIN', 'url')
+     Set value in section 'VALID'
+    ini_util.set_value('VALID', 'url', '200')
+    ini_util.save_changes()
+    """
+    ini_file = "FILE.INI"
+    ini_util = SingletonINIUtility(ini_file)
+    ini_util.read_ini()
+    return ini_util
 
 def train(model, X, y):
     # Split the data into training and testing sets
@@ -107,7 +176,7 @@ def map_encode_all(df):
 
 ### ###  ###
 
-def eda_analysis(df, learn_column, categ_heu, full='false'):
+def eda_analysis(df, learn_column, categ_heu, full=False):
     # 5 rows in table
     df.head()
     #  rangeIndex, num column, dtype(float64,category int64
@@ -120,8 +189,7 @@ def eda_analysis(df, learn_column, categ_heu, full='false'):
         "-------------describe--------> perform only for numeric values which has numeric dtype a statistical  view.--------")
     df.describe()  # perform only for numeric values which has numeric dtype a statistical  view.
     print("Look here")
-    print(
-        "-------------pairplot--------> show a plot of mix numeric values, can use hue as category distribution--------")
+    print("-------------pairplot--------> show a plot of mix numeric values, can use hue as category distribution--------")
     sns.pairplot(df, hue=categ_heu)  # show a plot of mix numeric values, can use hue as category distribution
     print("-------------displot--------> visualize the distribution of tip amounts. kernel density estimate--------")
     sns.displot(data=df, x=learn_column, kde=True)  # visualize the distribution of tip amounts. kernel density estimate
@@ -177,11 +245,14 @@ def eda_post_analysis(y_train):
     print("________________________________")
 
 
-def prepare_data(df, exe_dropna=False):
+def prepare_data(df, exe_dropna=False, exe_dummies=False):
     df_orig = df.copy()
 
     if exe_dropna:
         df = df.dropna()  # remove rows with na
+    if exe_dummies:
+        df = pd.get_dummies(df)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
+    return df
 
 
 def clean_data_retrivedsig(df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
@@ -229,41 +300,53 @@ def build_model(rf_model, df, learn_column):
 
 # _______________________________________________________________________
 ## start ##
-learn_column = 'price'  # 'tip' #want to learn to predict
-important_categ_column = 'carat'  # 'sex'  # want to see different distribution on plot
-print(f"learn_column is: {learn_column}")
-print(f"important_categ_column is: {important_categ_column}")
 
-df = sns.load_dataset('diamonds')  # ('tips')
-rf_model = RandomForestRegressor(random_state=100, max_depth=15, min_samples_split=16, min_samples_leaf=6)
-# max_leaf_nodes: None (unlimited number of leaf nodes)
-# min_samples_leaf: 1 (minimum number of samples required to be at a leaf node)
+def main():
 
-## max_leaf_nodes min_samples_leaf
-### EDA Exploratory  Data analysis ###
-## Consider to add it on pre analysis ##
-#    eda_analysis(df, learn_column, important_categ_column,True)
+    ini_util = initialize_ini()
+    get_df_Url()
+    learn_column = ini_util.get_value('MODULE', 'learn_column')  # 'tip' #want to learn to predict
+    important_categ_column = ini_util.get_value('MODULE', 'important_categ_column')    # want to see different distribution on plot
+    print(f"learn_column is: {learn_column}")
+    print(f"important_categ_column is: {important_categ_column}")
 
-### Prepare Data
-## can't encapsulate inside a function
+    # when sns i have only train which will be later split- consider to change TODO
+    #  dftrain will be split to train and Test, dfvalid available only when df comes from url due to BIG data
+    dftrain, dfvalid = get_df(initialize_ini().get_value('DATASET', 'url_en'))
 
-# df = pd.get_dummies(df) # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
-df = map_encode_all(df)
-# Create extra column for each value in categorial column.
-prepare_data(df, True)
+    dftrain.head()
+    rf_model = RandomForestRegressor(random_state=100, max_depth=15, min_samples_split=16, min_samples_leaf=6)
 
-### build the model
-build_model(rf_model, df, learn_column)
-df.head()
 
-print("--------------------Second try - after cleaning----------------------")
-## sig: (df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
-cleareddf = clean_data_retrivedsig(df, learn_column, important_categ_column, 0.5, 'sigma', important_categ_column)
-eda_analysis(cleareddf, learn_column, important_categ_column, True)
+    # max_leaf_nodes: None (unlimited number of leaf nodes)
+    # min_samples_leaf: 1 (minimum number of samples required to be at a leaf node)
 
-build_model(rf_model, cleareddf, learn_column)
-df.head()
+    ## max_leaf_nodes min_samples_leaf
+    ### EDA Exploratory  Data analysis ###
+    ## Consider to add it on pre analysis ##
+    eda_analysis(dftrain, learn_column, important_categ_column, False)
 
-# _______________________________________________________________________
-## end ##
-# Access model attributes and store them in a variable
+    ### Prepare Data
+    ## df = map_encode_all(dftrain) - need to update generic way
+    # Create extra column for each value in categorial column.
+    prepare_data(dftrain, True, True)
+
+    ### build the model
+    build_model(rf_model, dftrain, learn_column)
+    dftrain.head()
+
+    print("--------------------Second try - after cleaning----------------------")
+    ## sig: (df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
+    cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 0.5, 'sigma', important_categ_column)
+    eda_analysis(cleareddf, learn_column, important_categ_column, True)
+
+    build_model(rf_model, cleareddf, learn_column)
+    dftrain.head()
+
+    # _______________________________________________________________________
+    ## end ##
+    # Access model attributes and store them in a variable
+
+
+if __name__ == "__main__":
+    main()
