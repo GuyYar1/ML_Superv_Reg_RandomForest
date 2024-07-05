@@ -1,4 +1,6 @@
 # Library
+import pickle
+
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -251,7 +253,7 @@ def prepare_data(df, exe_dropna=False, exe_dummies=False):
     if exe_dropna:
         df = df.dropna()  # remove rows with na
     if exe_dummies:
-        df = pd.get_dummies(df)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
+       pass # df = pd.get_dummies(df)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
     return df
 
 
@@ -298,6 +300,11 @@ def build_model(rf_model, df, learn_column):
     y_train_pred, y_test_pred = summary(rf_model, X_train, X_test, y_train, y_test)
 
 
+def pkl_cloudDeployment(rf_model):
+    # Save the trained model to a pickle file
+    with open('model.pkl', 'wb') as file:
+        pickle.dump(rf_model, file)
+
 # _______________________________________________________________________
 ## start ##
 
@@ -317,7 +324,6 @@ def main():
     dftrain.head()
     rf_model = RandomForestRegressor(random_state=100, max_depth=15, min_samples_split=16, min_samples_leaf=6)
 
-
     # max_leaf_nodes: None (unlimited number of leaf nodes)
     # min_samples_leaf: 1 (minimum number of samples required to be at a leaf node)
 
@@ -330,6 +336,7 @@ def main():
     ## df = map_encode_all(dftrain) - need to update generic way
     # Create extra column for each value in categorial column.
     prepare_data(dftrain, True, True)
+    df = pd.get_dummies(dftrain)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
 
     ### build the model
     build_model(rf_model, dftrain, learn_column)
@@ -342,6 +349,8 @@ def main():
 
     build_model(rf_model, cleareddf, learn_column)
     dftrain.head()
+
+    pkl_cloudDeployment(rf_model)
 
     # _______________________________________________________________________
     ## end ##
