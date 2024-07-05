@@ -5,9 +5,10 @@ please
 
 
 Meeting minutes: 
+
 0. work on Feature engeniring 
 1. share git - Done 
-2. Add Framework capabilities - In progress { PKL is ready for deployment, INI file 
+2. Add Framework capabilities - In progress { PKL is ready for deployment, INI file )
 3. Virtual Machine (VM)  - @ Lior To DO
 
 
