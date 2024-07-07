@@ -280,22 +280,26 @@ def eda_analysis(df, learn_column, categ_heu, full=False):
     print(
         "-------------describe--------> perform only for numeric values which has numeric dtype a statistical  view.--------")
     print(df.describe())  # perform only for numeric values which has numeric dtype a statistical  view.
-    print("Look here")
-    print("-------------pairplot--------> show a plot of mix numeric values, can use hue as category distribution--------")
-    #sns.pairplot(df)
-    #plt.show(block=True)  # Display the plot
-
-    #sns.pairplot(df, hue=categ_heu)  # show a plot of mix numeric values, can use hue as category distribution
-    #plt.show()  # Display the plot
-
-    print("-------------displot--------> visualize the distribution of tip amounts. kernel density estimate--------")
-    #sns.displot(data=df, x=learn_column, kde=True)  # visualize the distribution of tip amounts. kernel density estimate
-    #plt.show(block=True) # Display the plot
-    print(
-        "-------------df.value_counts--------> for each column show you the distribution.  text and figure bar histogram--")
+    uniqness_name(df)
 
     if full:
-        uniqness_name(df)
+        print("Look here")
+        print(
+            "-------------pairplot--------> show a plot of mix numeric values, can use hue as category distribution--------")
+        sns.pairplot(df)
+        plt.show(block=True)  # Display the plot
+
+        sns.pairplot(df, hue=categ_heu)  # show a plot of mix numeric values, can use hue as category distribution
+        plt.show()  # Display the plot
+
+        print(
+            "-------------displot--------> visualize the distribution of tip amounts. kernel density estimate--------")
+        sns.displot(data=df, x=learn_column,
+                    kde=True)  # visualize the distribution of tip amounts. kernel density estimate
+        plt.show(block=True)  # Display the plot
+
+        print(
+            "-------------df.value_counts--------> for each column show you the distribution.  text and figure bar histogram--")
         for col in df.columns:
             print(df.value_counts(col))  # for each column show you the distribution.  text and figure bar histogram
             print()
@@ -424,7 +428,7 @@ def SampleFromDftrain(dftrain, skip):
     else:
         shuffled_df = dftrain.sample(frac=1, random_state=42)  # Set a random seed for reproducibility
         # Select the first 1000 rows
-        sample_df = shuffled_df.head(20000)
+        sample_df = shuffled_df.head(15000)
     return sample_df
 
 def firebase_init():
@@ -444,16 +448,12 @@ def write_and_get_db(iref, dict):
     data = iref.get()
     print("Data retrieved:", data)
 
-# def clearfromdb(iref, keys):
-#     key1 = '-O1CF0lqKOd6pyN2KdSB'
-#     key2 = '-O1CFZJg7QtZTk9e-rel'
-#
-#     iref.child('messages').child(key1).remove()
-#     iref.child('messages').child(key2).remove()
-#
+def clearfromdb(iref, key):
+    iref.child('messages').child(key).delete()
+
 def clearfromdb(iref, keys):
-   for key in keys:
-         iref.child('messages').child(key).delete()
+    for key in keys:
+        iref.child('messages').child(key).delete()
 
 def main():
     #SingletonINIUtility.clear()
@@ -501,6 +501,8 @@ def main():
     prepare_data(dftrain, True, True)
     dftrain = pd.get_dummies(dftrain)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
     ### build the model
+    dftrain.head()
+    exit()
     build_model(rf_model, dftrain, learn_column, False,  1.0)# run PCA
     dftrain.head()
 
