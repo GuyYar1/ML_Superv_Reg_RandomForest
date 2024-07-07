@@ -197,14 +197,14 @@ def eda_analysis(df, learn_column, categ_heu, full=False):
     print("Look here")
     print("-------------pairplot--------> show a plot of mix numeric values, can use hue as category distribution--------")
     sns.pairplot(df)
-    plt.show()  # Display the plot
+    plt.show(block=False)  # Display the plot
 
     #sns.pairplot(df, hue=categ_heu)  # show a plot of mix numeric values, can use hue as category distribution
     #plt.show()  # Display the plot
 
     print("-------------displot--------> visualize the distribution of tip amounts. kernel density estimate--------")
     sns.displot(data=df, x=learn_column, kde=True)  # visualize the distribution of tip amounts. kernel density estimate
-    plt.show()  # Display the plot
+    plt.show(block=False) # Display the plot
     print(
         "-------------df.value_counts--------> for each column show you the distribution.  text and figure bar histogram--")
 
@@ -217,10 +217,10 @@ def eda_analysis(df, learn_column, categ_heu, full=False):
             sns.countplot(data=df, x=col)
             plt.title(f'Bar Histogram for {col}')
             plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for readability
-            plt.show()
+            plt.show(block=False)
             plt.title(f'Bar Histogram for {col}')
             plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for readability
-            plt.show()
+            plt.show(block=False)
             print("________________________________")
 
 
@@ -311,16 +311,32 @@ def build_model(rf_model, df, learn_column):
     eda_post_analysis(y_train)
     y_train_pred, y_test_pred = summary(rf_model, X_train, X_test, y_train, y_test)
 
+
 def get_bool_from_ini(section, key):
     return ini_util.get_value(section, key).strip().lower() == 'true'
+
+
+def get_int_from_ini(section, key):
+    value = ini_util.get_value(section, key)
+    return int(value.strip())  # Convert to integer
+
+def SampleFromDftrain(dftrain, skip):
+    # Short time - remove later
+    if skip:
+        sample_df = dftrain
+    else:
+        shuffled_df = dftrain.sample(frac=1, random_state=42)  # Set a random seed for reproducibility
+        # Select the first 1000 rows
+        sample_df = shuffled_df.head(1000)
+    return sample_df
+
 
 # _______________________________________________________________________
 ## start ##
 
 def main():
-
-    # SingletonINIUtility.clear()
-    # ini_util = initialize_ini()
+    #SingletonINIUtility.clear()
+    #ini_util = initialize_ini()
 
     # Print the full path and content
     print(f"INI File Path: {ini_file_path}")
@@ -332,16 +348,25 @@ def main():
 
     learn_column = ini_util.get_value('MODULE', 'learn_column')  # 'tip' #want to learn to predict
     important_categ_column = ini_util.get_value('MODULE', 'important_categ_column')    # want to see different distribution on plot
-
+    num = ini_util.get_value('TRAIN', 'random_state')
     print(f"learn_column is: {learn_column}")
     print(f"important_categ_column is: {important_categ_column}")
-
+    print(f"num is: {num}")
     # when sns i have only train which will be later split- consider to change TODO
     #  dftrain will be split to train and Test, dfvalid available only when df comes from url due to BIG data
     en = get_bool_from_ini('DATASET', 'url_en')
     dftrain, dfvalid = get_df(en)
 
-    rf_model = RandomForestRegressor(random_state=100, max_depth=15, min_samples_split=16, min_samples_leaf=6)
+    dftrain = SampleFromDftrain(dftrain, False)# remove later
+
+    rr = get_int_from_ini('HYPER', 'random_state')
+    exit()
+
+    rf_model = RandomForestRegressor(random_state =get_int_from_ini('HYPER', 'random_state'),
+                                     max_depth =get_int_from_ini('HYPER', 'max_depth'),
+                                     min_samples_split = get_int_from_ini('HYPER', 'min_samples_split'),
+                                     min_samples_leaf = get_int_from_ini('HYPER', 'min_samples_leaf')
+                                     )
 
     # max_leaf_nodes: None (unlimited number of leaf nodes)
     # min_samples_leaf: 1 (minimum number of samples required to be at a leaf node)
@@ -350,6 +375,8 @@ def main():
     ### EDA Exploratory  Data analysis ###
     ## Consider to add it on pre analysis ##
     eda_analysis(dftrain, learn_column, important_categ_column, False)
+
+
 
     ### Prepare Data
     ## df = map_encode_all(dftrain) - need to update generic way
@@ -373,11 +400,13 @@ def main():
     # Access model attributes and store them in a variable
 
 
+
 if __name__ == "__main__":
     # Adjust the path based on your project location
     project_root = r"C:\Users\DELL\PycharmProjects\pythonProject"
     ini_file_name = "FILE.ini"
     ini_file_path = os.path.join(project_root, ini_file_name)
     # Create an instance of SingletonINIUtility
+    SingletonINIUtility.clear()
     ini_util = SingletonINIUtility(ini_file_path)
     main()
