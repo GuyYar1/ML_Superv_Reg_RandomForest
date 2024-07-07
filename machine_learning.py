@@ -78,7 +78,7 @@ def initialize_ini():
     ini_util.set_value('VALID', 'url', '200')
     ini_util.save_changes()
     """
-    ini_file = "FILE.INI"
+    ini_file = "config.INI"
     ini_util = SingletonINIUtility(ini_file)
     ini_util.read_ini()
     return ini_util
@@ -404,7 +404,7 @@ def main():
 if __name__ == "__main__":
     # Adjust the path based on your project location
     project_root = r"C:\Users\DELL\PycharmProjects\pythonProject"
-    ini_file_name = "FILE.ini"
+    ini_file_name = "config.INI"
     ini_file_path = os.path.join(project_root, ini_file_name)
     # Create an instance of SingletonINIUtility
     SingletonINIUtility.clear()
