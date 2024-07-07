@@ -1,5 +1,5 @@
 # Library
-import pickle
+import os
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -45,11 +45,15 @@ def get_df_Url():
     df_train = pd.read_csv('train.csv')
     df_valid = pd.read_csv('valid.csv')
 
+    print(df_train.head())
+    print(df_valid.head())
+
     return df_train, df_valid
 
 
 def get_df_sns():
-    df_all = sns.load_dataset(initialize_ini().get_value('DATASET', 'sns_name'))  # ('tips')
+    name = initialize_ini().get_value('DATASET', 'sns_name')
+    df_all = sns.load_dataset(name)  # ('tips')
     return df_all, None
 
 
@@ -180,23 +184,31 @@ def map_encode_all(df):
 
 def eda_analysis(df, learn_column, categ_heu, full=False):
     # 5 rows in table
-    df.head()
+    print(df.head())
     #  rangeIndex, num column, dtype(float64,category int64
     print("________________________________")
     print("-------------info--------> rangeIndex, num column, dtype(float64,category int64)--------")
-    df.info()  # rangeIndex, num column, dtype(float64,category int64)
+    print(df.info())  # rangeIndex, num column, dtype(float64,category int64)
     #  Category means non mumeric valus. i can have numeric values in category columns - Not good)
     print("________________________________")
     print(
         "-------------describe--------> perform only for numeric values which has numeric dtype a statistical  view.--------")
-    df.describe()  # perform only for numeric values which has numeric dtype a statistical  view.
+    print(df.describe())  # perform only for numeric values which has numeric dtype a statistical  view.
     print("Look here")
     print("-------------pairplot--------> show a plot of mix numeric values, can use hue as category distribution--------")
-    sns.pairplot(df, hue=categ_heu)  # show a plot of mix numeric values, can use hue as category distribution
+    sns.pairplot(df)
+    plt.show()  # Display the plot
+
+    #sns.pairplot(df, hue=categ_heu)  # show a plot of mix numeric values, can use hue as category distribution
+    #plt.show()  # Display the plot
+
     print("-------------displot--------> visualize the distribution of tip amounts. kernel density estimate--------")
     sns.displot(data=df, x=learn_column, kde=True)  # visualize the distribution of tip amounts. kernel density estimate
+    plt.show()  # Display the plot
     print(
         "-------------df.value_counts--------> for each column show you the distribution.  text and figure bar histogram--")
+
+
     if full:
         for col in df.columns:
             print(df.value_counts(col))  # for each column show you the distribution.  text and figure bar histogram
@@ -253,7 +265,7 @@ def prepare_data(df, exe_dropna=False, exe_dummies=False):
     if exe_dropna:
         df = df.dropna()  # remove rows with na
     if exe_dummies:
-       pass # df = pd.get_dummies(df)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
+        pass #
     return df
 
 
@@ -299,29 +311,36 @@ def build_model(rf_model, df, learn_column):
     eda_post_analysis(y_train)
     y_train_pred, y_test_pred = summary(rf_model, X_train, X_test, y_train, y_test)
 
-
-def pkl_cloudDeployment(rf_model):
-    # Save the trained model to a pickle file
-    with open('model.pkl', 'wb') as file:
-        pickle.dump(rf_model, file)
+def get_bool_from_ini(section, key):
+    return ini_util.get_value(section, key).strip().lower() == 'true'
 
 # _______________________________________________________________________
 ## start ##
 
 def main():
 
-    ini_util = initialize_ini()
-    get_df_Url()
+    # SingletonINIUtility.clear()
+    # ini_util = initialize_ini()
+
+    # Print the full path and content
+    print(f"INI File Path: {ini_file_path}")
+    print("INI Content:")
+    for section in ini_util.config.sections():
+        print(f"[{section}]")
+        for key, value in ini_util.config.items(section):
+            print(f"{key} = {value}")
+
     learn_column = ini_util.get_value('MODULE', 'learn_column')  # 'tip' #want to learn to predict
     important_categ_column = ini_util.get_value('MODULE', 'important_categ_column')    # want to see different distribution on plot
+
     print(f"learn_column is: {learn_column}")
     print(f"important_categ_column is: {important_categ_column}")
 
     # when sns i have only train which will be later split- consider to change TODO
     #  dftrain will be split to train and Test, dfvalid available only when df comes from url due to BIG data
-    dftrain, dfvalid = get_df(initialize_ini().get_value('DATASET', 'url_en'))
+    en = get_bool_from_ini('DATASET', 'url_en')
+    dftrain, dfvalid = get_df(en)
 
-    dftrain.head()
     rf_model = RandomForestRegressor(random_state=100, max_depth=15, min_samples_split=16, min_samples_leaf=6)
 
     # max_leaf_nodes: None (unlimited number of leaf nodes)
@@ -336,8 +355,7 @@ def main():
     ## df = map_encode_all(dftrain) - need to update generic way
     # Create extra column for each value in categorial column.
     prepare_data(dftrain, True, True)
-    df = pd.get_dummies(dftrain)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
-
+    dftrain = pd.get_dummies(dftrain)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
     ### build the model
     build_model(rf_model, dftrain, learn_column)
     dftrain.head()
@@ -350,12 +368,16 @@ def main():
     build_model(rf_model, cleareddf, learn_column)
     dftrain.head()
 
-    pkl_cloudDeployment(rf_model)
-
     # _______________________________________________________________________
     ## end ##
     # Access model attributes and store them in a variable
 
 
 if __name__ == "__main__":
+    # Adjust the path based on your project location
+    project_root = r"C:\Users\DELL\PycharmProjects\pythonProject"
+    ini_file_name = "FILE.ini"
+    ini_file_path = os.path.join(project_root, ini_file_name)
+    # Create an instance of SingletonINIUtility
+    ini_util = SingletonINIUtility(ini_file_path)
     main()

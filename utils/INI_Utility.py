@@ -1,6 +1,5 @@
 import configparser
 
-
 class SingletonINIUtility:
     _instance = None
 
@@ -26,3 +25,6 @@ class SingletonINIUtility:
         with open(self.file_path, 'w') as configfile:
             self.config.write(configfile)
 
+    @classmethod
+    def clear(cls):
+        cls._instance = None
