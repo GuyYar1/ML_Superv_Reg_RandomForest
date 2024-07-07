@@ -359,13 +359,13 @@ def main():
 
     dftrain = SampleFromDftrain(dftrain, False)# remove later
 
-    rr = get_int_from_ini('HYPER', 'random_state')
-    exit()
+    rr = get_int_from_ini('TRAIN', 'random_state')
 
-    rf_model = RandomForestRegressor(random_state =get_int_from_ini('HYPER', 'random_state'),
-                                     max_depth =get_int_from_ini('HYPER', 'max_depth'),
-                                     min_samples_split = get_int_from_ini('HYPER', 'min_samples_split'),
-                                     min_samples_leaf = get_int_from_ini('HYPER', 'min_samples_leaf')
+
+    rf_model = RandomForestRegressor(random_state =get_int_from_ini('TRAIN', 'random_state'),
+                                     max_depth =get_int_from_ini('TRAIN', 'max_depth'),
+                                     min_samples_split = get_int_from_ini('TRAIN', 'min_samples_split'),
+                                     min_samples_leaf = get_int_from_ini('TRAIN', 'min_samples_leaf')
                                      )
 
     # max_leaf_nodes: None (unlimited number of leaf nodes)
@@ -374,9 +374,7 @@ def main():
     ## max_leaf_nodes min_samples_leaf
     ### EDA Exploratory  Data analysis ###
     ## Consider to add it on pre analysis ##
-    eda_analysis(dftrain, learn_column, important_categ_column, False)
-
-
+    #eda_analysis(dftrain, learn_column, important_categ_column, False)
 
     ### Prepare Data
     ## df = map_encode_all(dftrain) - need to update generic way
@@ -390,7 +388,7 @@ def main():
     print("--------------------Second try - after cleaning----------------------")
     ## sig: (df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
     cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 0.5, 'sigma', important_categ_column)
-    eda_analysis(cleareddf, learn_column, important_categ_column, True)
+    # eda_analysis(cleareddf, learn_column, important_categ_column, True)
 
     build_model(rf_model, cleareddf, learn_column)
     dftrain.head()
@@ -403,10 +401,9 @@ def main():
 
 if __name__ == "__main__":
     # Adjust the path based on your project location
-    project_root = r"C:\Users\DELL\PycharmProjects\pythonProject"
+    project_root = r"C:\Users\DELL\Documents\GitHub\ML_Superv_Reg_RandomForest"
     ini_file_name = "config.INI"
     ini_file_path = os.path.join(project_root, ini_file_name)
     # Create an instance of SingletonINIUtility
-    SingletonINIUtility.clear()
     ini_util = SingletonINIUtility(ini_file_path)
     main()
