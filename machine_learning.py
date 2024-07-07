@@ -18,6 +18,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from pathlib import Path
+from firebase_admin import db
 
 
 def download_from_gdrive(url, filename):
@@ -139,12 +140,19 @@ def summary(model, X_train, X_test, y_train, y_test, pca ):
     print("I use the model to predict the y_train from X train. same for the X,y test.")
     print("the model should have simmilar residue\ error on prediction from test,train.")
     print(f"Look below: with {pca}")
-    print("Train without Model from raw data. mean:", round(y_train.mean(), 3))
-    print("Train RMSE:", round(RMSE(y_train_pred, y_train), 3))
-    print("Test RMSE:", round(RMSE(y_test_pred, y_test), 3))
-    print("Raw Train STD", round(y_train.std(), 3))
-    print("Train_pred STD", round(y_train_pred.std(), 3))
-    print("Test STD", round(y_test.std(), 3))
+    a= round(y_train.mean(), 3)
+    b= round(RMSE(y_train_pred, y_train), 3)
+    c= round(RMSE(y_test_pred, y_test), 3)
+    d= round(y_train.std(), 3)
+    e= round(y_train_pred.std(), 3)
+    f= round(y_test.std(), 3)
+
+    print("Train without Model from raw data. mean:", a)
+    print("Train RMSE:", b )
+    print("Test RMSE:", c )
+    print("Raw Train STD", d)
+    print("Train_pred STD", e)
+    print("Test STD", f )
     print("Conclusions: ")
     print("Train STD Vs. Test STD:")
     print("Train RMSE Vs. Test RMSE: RMSE should be similar but here the diff is  factors ")
@@ -156,7 +164,16 @@ def summary(model, X_train, X_test, y_train, y_test, pca ):
     print("-------------scatterplot--------> x=y_test, y=y_test_pred --")
     sns.scatterplot(x=y_test, y=y_test_pred)
     xx = np.linspace(y_test.min(), y_test.max(), 100)
-
+    dict_to_db = {
+          "user": "your_username",
+          "Ver": "1.0",
+          "Train without Model from raw data":a,
+           "train_rmse" : b,
+          "test_rmse" : c,
+          "raw_train_std" : d,
+          "train_pred_std" : e,
+          "test_std" : f,}
+    write_and_get_db()
     plt.plot(xx, xx, 'r--')
     plt.xlabel('actual')
     plt.ylabel('predicted')
@@ -356,13 +373,30 @@ def SampleFromDftrain(dftrain, skip):
         sample_df = shuffled_df.head(1000)
     return sample_df
 
+def firebase_init():
+    import firebase_admin
+    from firebase_admin import credentials
+
+    # Replace 'path/to/your/serviceAccountKey.json' with the actual path to your JSON file
+    cred = credentials.Certificate('C:/Users/DELL/Documents/GitHub/ML_Superv_Reg_RandomForest/db17-22f40-firebase-adminsdk-6ko5w-986a994da9.json')
+    firebase_admin.initialize_app(cred, {'databaseURL': 'https://db17-22f40-default-rtdb.firebaseio.com'})
+
+def write_and_get_db(dict):
+    # Create a reference to the root of the database
+    ref = db.reference("/")
+
+    # Write a string to the 'messages' node
+    ref.child('messages').push(dict)
+    data = ref.get()
+    print("Data retrieved:", data)
+
 
 # _______________________________________________________________________
 ## start ##
 
 def main():
     #SingletonINIUtility.clear()
-    #ini_util = initialize_ini()
+    firebase_init()
 
     # Print the full path and content
     print(f"INI File Path: {ini_file_path}")
