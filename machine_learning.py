@@ -1,6 +1,6 @@
 # Library
 import os
-
+from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
@@ -100,13 +100,35 @@ def train(model, X, y):
     print("________________________________")
     return X_train, X_test, y_train, y_test
 
+def trainr_pca(model, X, y):
+    # Split the data into training and testing sets
+    pca = PCA(n_components=4)  # Keep 2 components
+    print("_____CREATE  train_test_split USING TEST SIZE, with random tree state")
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=100)
+    X_train_reduced = pca.transform(X_train)
+    pca.fit(X_train)
+    X_train_reduced = pca.transform(X_train)
+    X_test_reduced = pca.transform(X_test)
+    # Train the model on the training set
+    print("_______Perform fit to learn from X train and y train______")
+    # Evaluate the model on the testing set
+    # Access model attributes
+    feature_importances = model.feature_importances_
+    feature_names = model.feature_names_in_
+    print("-----------feature_importances-----------------")
+    # Print the results
+    print(pd.Series(feature_importances, index=feature_names).sort_values(ascending=False))
+    print("________________________________")
+    return X_train, X_test, y_train, y_test
+
+
 
 def RMSE(y_pred, y_true):
     # Calculate the root mean squared error (RMSE)
     return ((y_pred - y_true) ** 2).mean() ** 0.5
 
 
-def summary(model, X_train, X_test, y_train, y_test):
+def summary(model, X_train, X_test, y_train, y_test, pca ):
     # Make predictions on the training and testing sets
     y_train_pred = model.predict(X_train)
     y_test_pred = model.predict(X_test)
@@ -116,7 +138,7 @@ def summary(model, X_train, X_test, y_train, y_test):
     print("so when i have the model already after the fit inside the train function.")
     print("I use the model to predict the y_train from X train. same for the X,y test.")
     print("the model should have simmilar residue\ error on prediction from test,train.")
-    print("Look below:")
+    print(f"Look below: with {pca}")
     print("Train without Model from raw data. mean:", round(y_train.mean(), 3))
     print("Train RMSE:", round(RMSE(y_train_pred, y_train), 3))
     print("Test RMSE:", round(RMSE(y_test_pred, y_test), 3))
@@ -304,12 +326,16 @@ def clean_data_retrivedsig(df, learn_column, clearedcolumn, cnt_std=3, method='s
     return df_filtered
 
 
-def build_model(rf_model, df, learn_column):
+def build_model(rf_model, df, learn_column, pca):
     X = df.drop(columns=learn_column)  # these are our "features" that we use to predict from
     y = df[learn_column]  # this is what we want to learn to predict
-    X_train, X_test, y_train, y_test = train(rf_model, X, y)
+
+    if pca:
+        X_train, X_test, y_train, y_test = trainr_pca(rf_model, X, y)
+    else:
+        X_train, X_test, y_train, y_test = train(rf_model, X, y)
     eda_post_analysis(y_train)
-    y_train_pred, y_test_pred = summary(rf_model, X_train, X_test, y_train, y_test)
+    y_train_pred, y_test_pred = summary(rf_model, X_train, X_test, y_train, y_test, pca)
 
 
 def get_bool_from_ini(section, key):
@@ -382,7 +408,7 @@ def main():
     prepare_data(dftrain, True, True)
     dftrain = pd.get_dummies(dftrain)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
     ### build the model
-    build_model(rf_model, dftrain, learn_column)
+    build_model(rf_model, dftrain, learn_column, False)# run PCA
     dftrain.head()
 
     print("--------------------Second try - after cleaning----------------------")
@@ -390,7 +416,7 @@ def main():
     cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 0.5, 'sigma', important_categ_column)
     # eda_analysis(cleareddf, learn_column, important_categ_column, True)
 
-    build_model(rf_model, cleareddf, learn_column)
+    build_model(rf_model, cleareddf, learn_column, False)
     dftrain.head()
 
     # _______________________________________________________________________
