@@ -4,6 +4,7 @@ from io import StringIO
 
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.inspection import permutation_importance
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import numpy as np
@@ -95,17 +96,47 @@ def train(model, X, y):
     model.fit(X_train, y_train)
     # Evaluate the model on the testing set
     # Access model attributes
+    # Calculate feature importances
     feature_importances = model.feature_importances_
     feature_names = model.feature_names_in_
+
+    permotation(X, feature_importances, feature_names, model, y)
+
+    #permutation(X, model, y,feature_importances)
+
     print("-----------feature_importances-----------------")
     # Print the results
     print(pd.Series(feature_importances, index=feature_names).sort_values(ascending=False))
     print("________________________________")
     return X_train, X_test, y_train, y_test
 
+
+def permotation(X, feature_importances, feature_names, model, y):
+    # Calculate permutation importances
+    result = permutation_importance(model, X, y, n_repeats=10, random_state=42)
+    # Add permutation importances to the DataFrame
+    feature_importance_df = pd.DataFrame({'Feature': feature_names, 'Importance': feature_importances})
+    feature_importance_df['Permutation_Importance'] = result.importances_mean
+    # Sort features by importance
+    feature_importance_df.sort_values(by='Importance', ascending=False, inplace=True)
+    # Print the sorted DataFrame
+    print(feature_importance_df)
+
+
+def permutation(X, model, y, feature_importance_df=None):
+    # Calculate permutation importances
+    result = permutation_importance(model, X, y, n_repeats=10, random_state=42)
+    # Add permutation importances to the DataFrame
+    feature_importance_df['Permutation_Importance'] = result.importances_mean
+    # Sort features by importance
+    feature_importance_df.sort_values(by='Importance', ascending=False, inplace=True)
+    # Print the sorted DataFrame
+    print(feature_importance_df)
+
+
 def trainr_pca(model, X, y):
     # Split the data into training and testing sets
-    pca = PCA(n_components=4)  # Keep 2 components
+    pca = PCA(n_components=2)  # Keep 2 components
     print("_____CREATE  train_test_split USING TEST SIZE, with random tree state")
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=100)
     X_train_reduced = pca.transform(X_train)
@@ -182,6 +213,8 @@ def summary(model, X_train, X_test, y_train, y_test, pca, ver=1.0):
 
     write_and_get_db(ref, dict_to_db)
     json_firbase = ref.get()
+    # Set display options to show all columns
+    pd.set_option("display.max_columns", None)
     json_firbase1 = pd.DataFrame(json_firbase['messages']).transpose()
     print(json_firbase1)
 
@@ -233,6 +266,9 @@ def map_encode_all(df):
 ### ###  ###
 
 def eda_analysis(df, learn_column, categ_heu, full=False):
+    # Set the maximum number of rows and columns to display
+    pd.set_option('display.max_rows', None)  # Show all rows
+    pd.set_option('display.max_columns', None)  # Show all columns
     # 5 rows in table
     print(df.head())
     #  rangeIndex, num column, dtype(float64,category int64
@@ -246,20 +282,20 @@ def eda_analysis(df, learn_column, categ_heu, full=False):
     print(df.describe())  # perform only for numeric values which has numeric dtype a statistical  view.
     print("Look here")
     print("-------------pairplot--------> show a plot of mix numeric values, can use hue as category distribution--------")
-    sns.pairplot(df)
-    plt.show(block=False)  # Display the plot
+    #sns.pairplot(df)
+    #plt.show(block=True)  # Display the plot
 
     #sns.pairplot(df, hue=categ_heu)  # show a plot of mix numeric values, can use hue as category distribution
     #plt.show()  # Display the plot
 
     print("-------------displot--------> visualize the distribution of tip amounts. kernel density estimate--------")
-    sns.displot(data=df, x=learn_column, kde=True)  # visualize the distribution of tip amounts. kernel density estimate
-    plt.show(block=False) # Display the plot
+    #sns.displot(data=df, x=learn_column, kde=True)  # visualize the distribution of tip amounts. kernel density estimate
+    #plt.show(block=True) # Display the plot
     print(
         "-------------df.value_counts--------> for each column show you the distribution.  text and figure bar histogram--")
 
-
     if full:
+        uniqness_name(df)
         for col in df.columns:
             print(df.value_counts(col))  # for each column show you the distribution.  text and figure bar histogram
             print()
@@ -267,11 +303,18 @@ def eda_analysis(df, learn_column, categ_heu, full=False):
             sns.countplot(data=df, x=col)
             plt.title(f'Bar Histogram for {col}')
             plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for readability
-            plt.show(block=False)
+            plt.show(block=True)
             plt.title(f'Bar Histogram for {col}')
             plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for readability
-            plt.show(block=False)
+            plt.show(block=True)
             print("________________________________")
+
+
+def uniqness_name(df):
+    # Get unique values for each column
+    for col in df.columns:
+        unique_values = df[col].unique()
+        print(f"Unique values counts in column '{col}': {unique_values}")
 
 
 def eda_post_analysis(y_train):
@@ -381,7 +424,7 @@ def SampleFromDftrain(dftrain, skip):
     else:
         shuffled_df = dftrain.sample(frac=1, random_state=42)  # Set a random seed for reproducibility
         # Select the first 1000 rows
-        sample_df = shuffled_df.head(1000)
+        sample_df = shuffled_df.head(20000)
     return sample_df
 
 def firebase_init():
@@ -426,10 +469,9 @@ def main():
 
     learn_column = ini_util.get_value('MODULE', 'learn_column')  # 'tip' #want to learn to predict
     important_categ_column = ini_util.get_value('MODULE', 'important_categ_column')    # want to see different distribution on plot
-    num = ini_util.get_value('TRAIN', 'random_state')
     print(f"learn_column is: {learn_column}")
     print(f"important_categ_column is: {important_categ_column}")
-    print(f"num is: {num}")
+
     # when sns i have only train which will be later split- consider to change TODO
     #  dftrain will be split to train and Test, dfvalid available only when df comes from url due to BIG data
     en = get_bool_from_ini('DATASET', 'url_en')
@@ -452,8 +494,7 @@ def main():
     ## max_leaf_nodes min_samples_leaf
     ### EDA Exploratory  Data analysis ###
     ## Consider to add it on pre analysis ##
-    #eda_analysis(dftrain, learn_column, important_categ_column, False)
-
+    eda_analysis(dftrain, learn_column, important_categ_column, False)
     ### Prepare Data
     ## df = map_encode_all(dftrain) - need to update generic way
     # Create extra column for each value in categorial column.
@@ -466,7 +507,7 @@ def main():
     print("--------------------Second try - after cleaning----------------------")
     ## sig: (df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
     cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 0.5, 'sigma', important_categ_column)
-    # eda_analysis(cleareddf, learn_column, important_categ_column, True)
+    # eda_analysis(cleareddf, learn_column, important_categ_column, False)
 
     build_model(rf_model, cleareddf, learn_column, False, 1.0)
     dftrain.head()
