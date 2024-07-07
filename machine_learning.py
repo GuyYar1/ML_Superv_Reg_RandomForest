@@ -164,6 +164,7 @@ def summary(model, X_train, X_test, y_train, y_test, pca ):
     print("-------------scatterplot--------> x=y_test, y=y_test_pred --")
     sns.scatterplot(x=y_test, y=y_test_pred)
     xx = np.linspace(y_test.min(), y_test.max(), 100)
+    
     dict_to_db = {
           "user": "your_username",
           "Ver": "1.0",
