@@ -1,5 +1,7 @@
 # Library
 import os
+from io import StringIO
+
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -129,7 +131,7 @@ def RMSE(y_pred, y_true):
     return ((y_pred - y_true) ** 2).mean() ** 0.5
 
 
-def summary(model, X_train, X_test, y_train, y_test, pca ):
+def summary(model, X_train, X_test, y_train, y_test, pca, ver=1.0):
     # Make predictions on the training and testing sets
     y_train_pred = model.predict(X_train)
     y_test_pred = model.predict(X_test)
@@ -164,17 +166,26 @@ def summary(model, X_train, X_test, y_train, y_test, pca ):
     print("-------------scatterplot--------> x=y_test, y=y_test_pred --")
     sns.scatterplot(x=y_test, y=y_test_pred)
     xx = np.linspace(y_test.min(), y_test.max(), 100)
-    
+
     dict_to_db = {
-          "user": "your_username",
-          "Ver": "1.0",
+          "user": os.getlogin(),
+          "Ver": ver,
           "Train without Model from raw data":a,
            "train_rmse" : b,
           "test_rmse" : c,
           "raw_train_std" : d,
           "train_pred_std" : e,
           "test_std" : f,}
-    write_and_get_db()
+
+    ref = db.reference()
+    #clearfromdb(ref, ['-O1CamdoXgL3sG8aOW5G', 'O1CamszdCzx6mrlEkAu', '-O1CcvUk3rZD0iYCO76-','-O1CdFe49Ye4QqY9zW3J'])
+
+    write_and_get_db(ref, dict_to_db)
+    json_firbase = ref.get()
+    json_firbase1 = StringIO(str(json_firbase))
+    df_firbase_Net = pd.read_json(json_firbase1)
+    print(df_firbase_Net)
+
     plt.plot(xx, xx, 'r--')
     plt.xlabel('actual')
     plt.ylabel('predicted')
@@ -344,7 +355,7 @@ def clean_data_retrivedsig(df, learn_column, clearedcolumn, cnt_std=3, method='s
     return df_filtered
 
 
-def build_model(rf_model, df, learn_column, pca):
+def build_model(rf_model, df, learn_column, pca, ver):
     X = df.drop(columns=learn_column)  # these are our "features" that we use to predict from
     y = df[learn_column]  # this is what we want to learn to predict
 
@@ -353,7 +364,7 @@ def build_model(rf_model, df, learn_column, pca):
     else:
         X_train, X_test, y_train, y_test = train(rf_model, X, y)
     eda_post_analysis(y_train)
-    y_train_pred, y_test_pred = summary(rf_model, X_train, X_test, y_train, y_test, pca)
+    y_train_pred, y_test_pred = summary(rf_model, X_train, X_test, y_train, y_test, pca, ver)
 
 
 def get_bool_from_ini(section, key):
@@ -382,18 +393,25 @@ def firebase_init():
     cred = credentials.Certificate('C:/Users/DELL/Documents/GitHub/ML_Superv_Reg_RandomForest/db17-22f40-firebase-adminsdk-6ko5w-986a994da9.json')
     firebase_admin.initialize_app(cred, {'databaseURL': 'https://db17-22f40-default-rtdb.firebaseio.com'})
 
-def write_and_get_db(dict):
+def write_and_get_db(iref, dict):
     # Create a reference to the root of the database
-    ref = db.reference("/")
+
 
     # Write a string to the 'messages' node
-    ref.child('messages').push(dict)
-    data = ref.get()
+    iref.child('messages').push(dict)
+    data = iref.get()
     print("Data retrieved:", data)
 
-
-# _______________________________________________________________________
-## start ##
+# def clearfromdb(iref, keys):
+#     key1 = '-O1CF0lqKOd6pyN2KdSB'
+#     key2 = '-O1CFZJg7QtZTk9e-rel'
+#
+#     iref.child('messages').child(key1).remove()
+#     iref.child('messages').child(key2).remove()
+#
+def clearfromdb(iref, keys):
+   for key in keys:
+         iref.child('messages').child(key).delete()
 
 def main():
     #SingletonINIUtility.clear()
@@ -443,7 +461,7 @@ def main():
     prepare_data(dftrain, True, True)
     dftrain = pd.get_dummies(dftrain)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
     ### build the model
-    build_model(rf_model, dftrain, learn_column, False)# run PCA
+    build_model(rf_model, dftrain, learn_column, False,  1.0)# run PCA
     dftrain.head()
 
     print("--------------------Second try - after cleaning----------------------")
@@ -451,8 +469,9 @@ def main():
     cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 0.5, 'sigma', important_categ_column)
     # eda_analysis(cleareddf, learn_column, important_categ_column, True)
 
-    build_model(rf_model, cleareddf, learn_column, False)
+    build_model(rf_model, cleareddf, learn_column, False, 1.0)
     dftrain.head()
+
 
     # _______________________________________________________________________
     ## end ##
