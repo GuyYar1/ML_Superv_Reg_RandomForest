@@ -182,9 +182,8 @@ def summary(model, X_train, X_test, y_train, y_test, pca, ver=1.0):
 
     write_and_get_db(ref, dict_to_db)
     json_firbase = ref.get()
-    json_firbase1 = StringIO(str(json_firbase))
-    df_firbase_Net = pd.read_json(json_firbase1)
-    print(df_firbase_Net)
+    json_firbase1 = pd.DataFrame(json_firbase['messages']).transpose()
+    print(json_firbase1)
 
     plt.plot(xx, xx, 'r--')
     plt.xlabel('actual')
@@ -476,7 +475,7 @@ def main():
     # _______________________________________________________________________
     ## end ##
     # Access model attributes and store them in a variable
-
+    print("--- END Run Good Bye--- ")
 
 
 if __name__ == "__main__":
