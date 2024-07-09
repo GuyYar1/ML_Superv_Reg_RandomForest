@@ -90,10 +90,13 @@ def initialize_ini():
 def train(model, X, y):
     # Split the data into training and testing sets
     print("_____CREATE  train_test_split USING TEST SIZE, with random tree state")
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=100)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42)
     # Train the model on the training set
     print("_______Perform fit to learn from X train and y train______")
+    print(X_train)
+    print(y_train)
     model.fit(X_train, y_train)
+
     # Evaluate the model on the testing set
     # Access model attributes
     feature_importances = model.feature_importances_
@@ -108,7 +111,7 @@ def trainr_pca(model, X, y):
     # Split the data into training and testing sets
     pca = PCA(n_components=4)  # Keep 2 components
     print("_____CREATE  train_test_split USING TEST SIZE, with random tree state")
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=100)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42)
     X_train_reduced = pca.transform(X_train)
     pca.fit(X_train)
     X_train_reduced = pca.transform(X_train)
@@ -310,14 +313,46 @@ def eda_post_analysis(y_train):
     print("________________________________")
 
 
-def prepare_data(df, exe_dropna=False, exe_dummies=False):
+def prepare_data(df, exe_dropna=False, exe_dummies=False, exe_exclusenonnumeric=False, exe_missing=False):
     df_orig = df.copy()
 
     if exe_dropna:
         df = df.dropna()  # remove rows with na
     if exe_dummies:
         df = pd.get_dummies(df)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
+    if exe_exclusenonnumeric:
+        df = df.select_dtypes(exclude='object')
+        df = df.select_dtypes(include='number')
+    if exe_missing:
+        df = handle_missing_values(df, action='missing_category')
     return df
+
+
+def handle_missing_values(df, action='impute'):
+    """
+    Handles missing values (NaNs) in a DataFrame.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame.
+        action (str, optional): Action to perform ('impute' or 'missing_category').
+            Defaults to 'impute'.
+
+    Returns:
+        pd.DataFrame: DataFrame with missing values handled.
+    """
+    if action == 'impute':
+        # Impute missing values with mean (for numeric columns) or most frequent value (for categorical columns)
+        imputer = SimpleImputer(strategy='mean', add_indicator=False)
+        df_imputed = pd.DataFrame(imputer.fit_transform(df), columns=df.columns)
+
+    elif action == 'missing_category':
+        # Treat missing values as a separate category (for categorical columns)
+        df_imputed = df.fillna('Missing')
+
+    else:
+        raise ValueError("Invalid action. Choose 'impute' or 'missing_category'.")
+
+    return df_imputed
 
 
 def clean_data_retrivedsig(df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
@@ -359,6 +394,7 @@ def build_model(rf_model, df, learn_column, pca, ver):
     X = df.drop(columns=learn_column)  # these are our "features" that we use to predict from
     y = df[learn_column]  # this is what we want to learn to predict
 
+
     if pca:
         X_train, X_test, y_train, y_test = trainr_pca(rf_model, X, y)
     else:
@@ -382,7 +418,7 @@ def SampleFromDftrain(dftrain, skip):
     else:
         shuffled_df = dftrain.sample(frac=1, random_state=42)  # Set a random seed for reproducibility
         # Select the first 1000 rows
-        sample_df = shuffled_df.head(1000)
+        sample_df = shuffled_df.head(10000)
     return sample_df
 
 def firebase_init():
@@ -517,19 +553,18 @@ def generate_submission_csv(csv_file_path, model, important_categ_column, learn_
     print(f"Submission CSV file saved as '{submission_filename}'")
 
 def preprocess_and_extract_features(dftrain, important_categ_column, learn_column):
-    ## Consider to add it on pre analysis ##
+         ## Consider to add it on pre analysis ##
     # eda_analysis(dftrain, learn_column, important_categ_column, False)
-    ### Prepare Data
+         ### Prepare Data
     ##df = map_encode_all(dftrain) - need to update generic way
     # Create extra column for each value in categorial column.
-    prepare_data(dftrain, True, True)
+    dftrain = prepare_data(dftrain, True, True, True, True)
     # ### build the model
     # build_model(rf_model, dftrain, learn_column, False,  1.0)# run PCA
     # dftrain.head()
     # print("--------------------Second try - after cleaning----------------------")
     ## sig: (df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
-    cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 0.5, 'sigma',
-                                       important_categ_column)
+    cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 0.5, 'sigma',important_categ_column)
     ## eda_analysis(cleareddf, learn_column, important_categ_column, True)
     return cleareddf
 
