@@ -561,13 +561,13 @@ def add_additional_columns(df, Prod_type, range_min, range_max, unit):
     return df
 
 
-def split_and_create_columns(df):
+def split_and_create_columns(df, columntoextract='fiProductClassDesc'):
     # Assuming your original column name is 'fiProductClassDesc'
     # Convert 'fiProductClassDesc' to string type if it's not
-    df['fiProductClassDesc'] = df['fiProductClassDesc'].astype(str).str.strip()  # Remove any leading/trailing spaces
+    df[columntoextract] = df[columntoextract].astype(str).str.strip()  # Remove any leading/trailing spaces
 
     Prod_type, range_min, range_max, unit = None,None, None, None
-    Prod_type, range_min, range_max, unit = parse_product_string(df['fiProductClassDesc'])
+    Prod_type, range_min, range_max, unit = parse_product_string(df[columntoextract])
     df = add_additional_columns(df, Prod_type, range_min, range_max, unit)
 
     # Assign column names based on the number of columns
@@ -577,7 +577,7 @@ def split_and_create_columns(df):
         print("Warning: Split did not result in 4 columns. Check the delimiter in 'fiProductClassDesc'.")
 
     # Drop the original 'fiProductClassDesc' column
-    df.drop(columns=['fiProductClassDesc'], inplace=True)
+    df.drop(columns=[columntoextract], inplace=True)
 
     # # Concatenate the split columns back to the original DataFrame
     # df = pd.concat([df, split_columns], axis=1)
@@ -640,7 +640,7 @@ def preprocess_and_extract_features(dftrain, important_categ_column, learn_colum
     ##df = map_encode_all(dftrain) - need to update generic way
     # Create extra column for each value in categorial column.
     #(df, exe_dropna=False, exe_dummies=False, exe_exclusenonnumeric=False, exe_missing=False,exe_nonnumeric_code=False)
-    dftrain = split_and_create_columns(dftrain)
+    dftrain = split_and_create_columns(dftrain, 'fiProductClassDesc')
     dftrain = prepare_data(dftrain, exe_missing=True, exe_nonnumeric_code=True,  exe_exclusenonnumeric=False,
                            exe_dropna=True, exe_dummies=False,  print_info=True)
 
@@ -654,6 +654,24 @@ def preprocess_and_extract_features(dftrain, important_categ_column, learn_colum
     print("cleareddf.shape", cleareddf.shape)
     ## eda_analysis(cleareddf, learn_column, important_categ_column, True)
     return cleareddf
+
+
+def load_job():
+    import joblib
+    from sklearn.ensemble import RandomForestRegressor
+
+    # Create and train your Random Forest Regressor
+    rf = RandomForestRegressor(n_estimators=250, max_features=9)
+    rf.fit(X_train, y_train)
+
+    # Save the model to a file
+    joblib.dump(rf, 'random_forest_model.joblib')
+
+    # Later, load the model from the file
+    loaded_rf = joblib.load('random_forest_model.joblib')
+
+    # Now you can use 'loaded_rf' for predictions
+    preds = loaded_rf.predict(X_test)
 
 
 def main():
@@ -686,8 +704,9 @@ def main():
     rf_model = RandomForestRegressor(random_state =get_int_from_ini('TRAIN', 'random_state'),
                                      max_depth =get_int_from_ini('TRAIN', 'max_depth'),
                                      min_samples_split = get_int_from_ini('TRAIN', 'min_samples_split'),
-                                     min_samples_leaf = get_int_from_ini('TRAIN', 'min_samples_leaf')
-                                     )
+                                     min_samples_leaf = get_int_from_ini('TRAIN', 'min_samples_leaf'),
+                                     n_estimators=250, max_features=9)
+
                                     # max_leaf_nodes: None (unlimited number of leaf nodes)
                                     # min_samples_leaf: 1 (minimum number of samples required to be at a leaf node)
                                     ## max_leaf_nodes min_samples_leaf
