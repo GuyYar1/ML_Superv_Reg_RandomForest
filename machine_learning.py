@@ -5,6 +5,7 @@ from io import StringIO
 
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import numpy as np
@@ -90,7 +91,7 @@ def initialize_ini():
 def train(model, X, y):
     # Split the data into training and testing sets
     print("_____CREATE  train_test_split USING TEST SIZE, with random tree state")
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     # Train the model on the training set
     print("_______Perform fit to learn from X train and y train______")
     print(X_train)
@@ -111,7 +112,7 @@ def trainr_pca(model, X, y):
     # Split the data into training and testing sets
     pca = PCA(n_components=4)  # Keep 2 components
     print("_____CREATE  train_test_split USING TEST SIZE, with random tree state")
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     X_train_reduced = pca.transform(X_train)
     pca.fit(X_train)
     X_train_reduced = pca.transform(X_train)
@@ -313,20 +314,89 @@ def eda_post_analysis(y_train):
     print("________________________________")
 
 
-def prepare_data(df, exe_dropna=False, exe_dummies=False, exe_exclusenonnumeric=False, exe_missing=False):
-    df_orig = df.copy()
+def impute_nan(df, method='mean'):
+    """
+    Impute NaN values in a DataFrame based on the specified method.
 
-    if exe_dropna:
-        df = df.dropna()  # remove rows with na
-    if exe_dummies:
-        df = pd.get_dummies(df)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
-    if exe_exclusenonnumeric:
-        df = df.select_dtypes(exclude='object')
-        df = df.select_dtypes(include='number')
-    if exe_missing:
-        df = handle_missing_values(df, action='missing_category')
+    Args:
+        df (pd.DataFrame): Input DataFrame.
+        method (str): Imputation method ('mean', 'median', or 'constant').
+
+    Returns:
+        pd.DataFrame: DataFrame with NaN values imputed.
+    """
+    if method == 'mean':
+        imputed_values = df.mean()
+    elif method == 'median':
+        imputed_values = df.median()
+    elif method == 'constant':
+        imputed_values = 999  # Replace NaNs with a constant value (adjust as needed)
+    else:
+        raise ValueError("Invalid imputation method. Choose 'mean', 'median', or 'constant'.")
+
+    df.fillna(imputed_values, inplace=True)
     return df
 
+
+def prepare_data(df, exe_missing=False, exe_nonnumeric_code=False, exe_exclusenonnumeric=False,
+                 exe_dropna=False, exe_dummies=False, print_info=False):
+    """
+    Prepare data by handling missing values, converting non-numeric columns, excluding non-numeric columns,
+    dropping rows with missing values, and creating one-hot encoded columns.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame.
+        exe_missing (bool): Execute missing value handling.
+        exe_nonnumeric_code (bool): Execute non-numeric column conversion to codes.
+        exe_exclusenonnumeric (bool): Execute exclusion of non-numeric columns.
+        exe_dropna (bool): Execute dropping rows with missing values.
+        exe_dummies (bool): Execute one-hot encoding.
+        print_info (bool): Print DataFrame info at each step.
+
+    Returns:
+        pd.DataFrame: Processed DataFrame.
+    """
+    df_orig = df.copy()
+
+    if print_info:
+        print("Original DataFrame info:")
+        print(df.info())
+
+    if exe_missing:
+        df = handle_missing_values(df, action='missing_category')
+        if print_info:
+            print("After handling missing values:")
+            print(df.info())
+
+    if exe_nonnumeric_code:
+        non_numeric_col = df.select_dtypes(exclude=['number']).columns
+        for something, content in df.items():
+            if not pd.api.types.is_numeric_dtype(content):
+                df[something] = pd.Categorical(content).codes + 1
+        if print_info:
+            print("After converting non-numeric columns to codes:")
+            print(df.info())
+
+    if exe_exclusenonnumeric:
+        df = df.select_dtypes(include='number')
+        if print_info:
+            print("After excluding non-numeric columns:")
+            print(df.info())
+
+    if exe_dropna:
+        df = df.dropna()  # Remove rows with missing values
+        if print_info:
+            print("After dropping rows with missing values:")
+            print(df.info())
+
+    if exe_dummies:
+        # Consider not using this with random forests
+        df = pd.get_dummies(df)  # Converts categorical variables into numerical representations
+        if print_info:
+            print("After creating one-hot encoded columns:")
+            print(df.info())
+
+    return df
 
 def handle_missing_values(df, action='impute'):
     """
@@ -418,7 +488,8 @@ def SampleFromDftrain(dftrain, skip):
     else:
         shuffled_df = dftrain.sample(frac=1, random_state=42)  # Set a random seed for reproducibility
         # Select the first 1000 rows
-        sample_df = shuffled_df.head(10000)
+        sample_df = shuffled_df.head(15000)
+        print('SampleFromDftrain', sample_df.shape)
     return sample_df
 
 def firebase_init():
@@ -525,30 +596,40 @@ def generate_submission_csv(csv_file_path, model, important_categ_column, learn_
     Returns:
         None (Creates a CSV file with the submission data).
     """
+    print(" submission started")
     # Load the CSV file
-    df_valid = pd.read_csv(csv_file_path)
 
-    # Extract relevant features (assuming X2 is defined elsewhere)
-    X_valid = df_valid.set_index('SalesID')[dftrain.columns]
+    project_root1 = r"C:\Users\DELL\Documents\GitHub\ML_Superv_Reg_RandomForest"
+    valid_file_path1 = os.path.join(project_root1, csv_file_path)
+    df_valid = pd.read_csv(valid_file_path1)
 
     # Handle the same way as you handled the train CSV data - cleaning, filling, etc.
     df_valid = preprocess_and_extract_features(df_valid, important_categ_column, learn_column)
 
+    # Extract relevant features (assuming X2 is defined elsewhere)
+    X_valid = df_valid.set_index('SalesID')
+    X_valid = df_valid
     # Check the shape of df_valid
     print(f"Shape of df_valid: {df_valid.shape}")
 
     # Check the shape of X_valid
     print(f"Shape of X_valid: {X_valid.shape}")
 
+
     # Make predictions
     y_valid_pred = model.predict(X_valid)
     y_valid_pred = pd.Series(y_valid_pred, index=X_valid.index, name='SalePrice')
+    y_valid_pred.index = df_valid['SalesID']
+   
+
+
 
     # here there is no RMSE. due to that this is the real time data.
     # but i can compare to the test value.
 
     # Create a submission CSV file
     submission_filename = f'submission_{datetime.now().isoformat()}.csv'
+    submission_filename = submission_filename.replace(":", "_")
     y_valid_pred.to_csv(submission_filename)
     print(f"Submission CSV file saved as '{submission_filename}'")
 
@@ -558,13 +639,19 @@ def preprocess_and_extract_features(dftrain, important_categ_column, learn_colum
          ### Prepare Data
     ##df = map_encode_all(dftrain) - need to update generic way
     # Create extra column for each value in categorial column.
-    dftrain = prepare_data(dftrain, True, True, True, True)
+    #(df, exe_dropna=False, exe_dummies=False, exe_exclusenonnumeric=False, exe_missing=False,exe_nonnumeric_code=False)
+    dftrain = split_and_create_columns(dftrain)
+    dftrain = prepare_data(dftrain, exe_missing=True, exe_nonnumeric_code=True,  exe_exclusenonnumeric=False,
+                           exe_dropna=True, exe_dummies=False,  print_info=True)
+
+    print("dftrain.shape", dftrain.shape)
     # ### build the model
     # build_model(rf_model, dftrain, learn_column, False,  1.0)# run PCA
     # dftrain.head()
     # print("--------------------Second try - after cleaning----------------------")
     ## sig: (df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
-    cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 0.5, 'sigma',important_categ_column)
+    cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 3, 'sigma',important_categ_column)
+    print("cleareddf.shape", cleareddf.shape)
     ## eda_analysis(cleareddf, learn_column, important_categ_column, True)
     return cleareddf
 
@@ -594,8 +681,6 @@ def main():
 
     dftrain, dfvalid = get_df(en)
     dftrain.head()
-    dftrain = split_and_create_columns(dftrain)
-    dftrain.head()
     dftrain = SampleFromDftrain(dftrain, False)# remove later
     rr = get_int_from_ini('TRAIN', 'random_state')
     rf_model = RandomForestRegressor(random_state =get_int_from_ini('TRAIN', 'random_state'),
@@ -610,7 +695,7 @@ def main():
 
             # ************&&&&&&&&&&&&&&&&&***********************
     cleareddf = preprocess_and_extract_features(dftrain, important_categ_column, learn_column)
-
+    print("cleareddf.shape", cleareddf.shape)
     # ************&&&&&&&&&&&&&&&&&***********************
     build_model(rf_model, cleareddf, learn_column, False, 1.0)
     dftrain.head()
@@ -618,7 +703,7 @@ def main():
     ## end ##
     # Access model attributes and store them in a variable
 
-    generate_submission_csv("Predict_Valid", rf_model, important_categ_column, learn_column, dftrain)
+    generate_submission_csv("valid.csv", rf_model, important_categ_column, learn_column, dftrain)
     print("--- END Run Good Bye--- ")
 
 
