@@ -1,5 +1,6 @@
 # Library
 import os
+from datetime import datetime
 from io import StringIO
 
 from sklearn.decomposition import PCA
@@ -315,7 +316,7 @@ def prepare_data(df, exe_dropna=False, exe_dummies=False):
     if exe_dropna:
         df = df.dropna()  # remove rows with na
     if exe_dummies:
-        pass #
+        df = pd.get_dummies(df)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
     return df
 
 
@@ -412,7 +413,129 @@ def clearfromdb(iref, keys):
    for key in keys:
          iref.child('messages').child(key).delete()
 
+def parse_product_string(product_series):
+    """
+    Parses a product series where each element is a string.
+    The function retrieves 4 series: Prod_type, range_min, range_max, and unit.
+    It also drops the original column 'fiProductClassDesc' from the DataFrame.
+
+    Args:
+        product_series (pd.Series): The input product series.
+
+    Returns:
+        (Prod_type, range_min, range_max, unit) series
+    """
+    parts = product_series.str.split(" - ")
+    Prod_type = parts.str[0]
+    range_values = parts.str[1].str.split(" to ")
+    range_min = pd.to_numeric(range_values.str[0], errors='coerce')
+    range_max_help = range_values.str[1].str.split()  # Extract numeric part
+    range_max = range_max_help.str[0]
+    unit = range_max_help.str[1]
+    return Prod_type, range_min, range_max, unit
+
+
+def add_additional_columns(df, Prod_type, range_min, range_max, unit):
+    """
+    Adds 'Prod_type', 'range_min', 'range_max', and 'unit' columns to the DataFrame.
+    Args:
+        df (pd.DataFrame): The existing DataFrame.
+        Prod_type (str): The value for the 'Prod_type' column.
+        range_min (float): The value for the 'range_min' column.
+        range_max (float): The value for the 'range_max' column.
+        unit (str): The value for the 'unit' column.
+    Returns:
+        pd.DataFrame: The DataFrame with the additional columns.
+    """
+    df['Prod_type'] = Prod_type
+    df['range_min'] = range_min
+    df['range_max'] = range_max
+    df['unit'] = unit
+    return df
+
+
+def split_and_create_columns(df):
+    # Assuming your original column name is 'fiProductClassDesc'
+    # Convert 'fiProductClassDesc' to string type if it's not
+    df['fiProductClassDesc'] = df['fiProductClassDesc'].astype(str).str.strip()  # Remove any leading/trailing spaces
+
+    Prod_type, range_min, range_max, unit = None,None, None, None
+    Prod_type, range_min, range_max, unit = parse_product_string(df['fiProductClassDesc'])
+    df = add_additional_columns(df, Prod_type, range_min, range_max, unit)
+
+    # Assign column names based on the number of columns
+    if Prod_type is not None and range_min is not None and range_max is not None and unit is not None:
+        print("All variables have non-None values.")
+    else:
+        print("Warning: Split did not result in 4 columns. Check the delimiter in 'fiProductClassDesc'.")
+
+    # Drop the original 'fiProductClassDesc' column
+    df.drop(columns=['fiProductClassDesc'], inplace=True)
+
+    # # Concatenate the split columns back to the original DataFrame
+    # df = pd.concat([df, split_columns], axis=1)
+
+    return df
+
+
+def generate_submission_csv(csv_file_path, model, important_categ_column, learn_column, dftrain):
+    """
+    Generates a submission CSV file with predicted SalePrice based on the provided model.
+
+    Args:
+        csv_file_path (str): Path to the input CSV file.
+        model: Trained machine learning model.
+
+    Returns:
+        None (Creates a CSV file with the submission data).
+    """
+    # Load the CSV file
+    df_valid = pd.read_csv(csv_file_path)
+
+    # Extract relevant features (assuming X2 is defined elsewhere)
+    X_valid = df_valid.set_index('SalesID')[dftrain.columns]
+
+    # Handle the same way as you handled the train CSV data - cleaning, filling, etc.
+    df_valid = preprocess_and_extract_features(df_valid, important_categ_column, learn_column)
+
+    # Check the shape of df_valid
+    print(f"Shape of df_valid: {df_valid.shape}")
+
+    # Check the shape of X_valid
+    print(f"Shape of X_valid: {X_valid.shape}")
+
+    # Make predictions
+    y_valid_pred = model.predict(X_valid)
+    y_valid_pred = pd.Series(y_valid_pred, index=X_valid.index, name='SalePrice')
+
+    # here there is no RMSE. due to that this is the real time data.
+    # but i can compare to the test value.
+
+    # Create a submission CSV file
+    submission_filename = f'submission_{datetime.now().isoformat()}.csv'
+    y_valid_pred.to_csv(submission_filename)
+    print(f"Submission CSV file saved as '{submission_filename}'")
+
+def preprocess_and_extract_features(dftrain, important_categ_column, learn_column):
+    ## Consider to add it on pre analysis ##
+    # eda_analysis(dftrain, learn_column, important_categ_column, False)
+    ### Prepare Data
+    ##df = map_encode_all(dftrain) - need to update generic way
+    # Create extra column for each value in categorial column.
+    prepare_data(dftrain, True, True)
+    # ### build the model
+    # build_model(rf_model, dftrain, learn_column, False,  1.0)# run PCA
+    # dftrain.head()
+    # print("--------------------Second try - after cleaning----------------------")
+    ## sig: (df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
+    cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 0.5, 'sigma',
+                                       important_categ_column)
+    ## eda_analysis(cleareddf, learn_column, important_categ_column, True)
+    return cleareddf
+
+
 def main():
+
     #SingletonINIUtility.clear()
     firebase_init()
 
@@ -433,49 +556,36 @@ def main():
     # when sns i have only train which will be later split- consider to change TODO
     #  dftrain will be split to train and Test, dfvalid available only when df comes from url due to BIG data
     en = get_bool_from_ini('DATASET', 'url_en')
+
     dftrain, dfvalid = get_df(en)
-
+    dftrain.head()
+    dftrain = split_and_create_columns(dftrain)
+    dftrain.head()
     dftrain = SampleFromDftrain(dftrain, False)# remove later
-
     rr = get_int_from_ini('TRAIN', 'random_state')
-
-
     rf_model = RandomForestRegressor(random_state =get_int_from_ini('TRAIN', 'random_state'),
                                      max_depth =get_int_from_ini('TRAIN', 'max_depth'),
                                      min_samples_split = get_int_from_ini('TRAIN', 'min_samples_split'),
                                      min_samples_leaf = get_int_from_ini('TRAIN', 'min_samples_leaf')
                                      )
+                                    # max_leaf_nodes: None (unlimited number of leaf nodes)
+                                    # min_samples_leaf: 1 (minimum number of samples required to be at a leaf node)
+                                    ## max_leaf_nodes min_samples_leaf
+                         ### EDA Exploratory  Data analysis ###
 
-    # max_leaf_nodes: None (unlimited number of leaf nodes)
-    # min_samples_leaf: 1 (minimum number of samples required to be at a leaf node)
+            # ************&&&&&&&&&&&&&&&&&***********************
+    cleareddf = preprocess_and_extract_features(dftrain, important_categ_column, learn_column)
 
-    ## max_leaf_nodes min_samples_leaf
-    ### EDA Exploratory  Data analysis ###
-    ## Consider to add it on pre analysis ##
-    #eda_analysis(dftrain, learn_column, important_categ_column, False)
-
-    ### Prepare Data
-    ## df = map_encode_all(dftrain) - need to update generic way
-    # Create extra column for each value in categorial column.
-    prepare_data(dftrain, True, True)
-    dftrain = pd.get_dummies(dftrain)  # converts categorical variables in your DataFrame df into numerical representations using one-hot encoding
-    ### build the model
-    build_model(rf_model, dftrain, learn_column, False,  1.0)# run PCA
-    dftrain.head()
-
-    print("--------------------Second try - after cleaning----------------------")
-    ## sig: (df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
-    cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 0.5, 'sigma', important_categ_column)
-    # eda_analysis(cleareddf, learn_column, important_categ_column, True)
-
+    # ************&&&&&&&&&&&&&&&&&***********************
     build_model(rf_model, cleareddf, learn_column, False, 1.0)
     dftrain.head()
-
-
     # _______________________________________________________________________
     ## end ##
     # Access model attributes and store them in a variable
+
+    generate_submission_csv("Predict_Valid", rf_model, important_categ_column, learn_column, dftrain)
     print("--- END Run Good Bye--- ")
+
 
 
 if __name__ == "__main__":
