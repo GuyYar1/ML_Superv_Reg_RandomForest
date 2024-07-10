@@ -2,7 +2,7 @@
 Instead of using git action i will use a database: Firebase Realtime Database: A NoSQL cloud database that stores and syncs data in real-time across all clients.
 please 
 
-
+Submission csv file as limitation  of 11573. error if higher rows: "Evaluation Exception: Submission must have 11573 row"
 
 Meeting minutes: 
 
