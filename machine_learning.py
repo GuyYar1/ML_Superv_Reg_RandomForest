@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from io import StringIO
 
+import firebase_admin
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
@@ -23,7 +24,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from pathlib import Path
 from firebase_admin import db
-
+from firebase_admin import credentials
 
 def download_from_gdrive(url, filename):
     # Extract the file ID from the URL
@@ -136,53 +137,24 @@ def RMSE(y_pred, y_true):
     return ((y_pred - y_true) ** 2).mean() ** 0.5
 
 
-def summary(model, X_train, X_test, y_train, y_test, pca, ver=1.0):
+def predict_y(model, X_train, X_test, y_train, y_test, pca, ver=1.0):
     # Make predictions on the training and testing sets
     y_train_pred = model.predict(X_train)
     y_test_pred = model.predict(X_test)
-    print("____________Learning Metric result ____________________")
-    print("train data is the data that created the model.")
-    print("train data is the data that i only have. test data is not static and be changed")
-    print("so when i have the model already after the fit inside the train function.")
-    print("I use the model to predict the y_train from X train. same for the X,y test.")
-    print("the model should have simmilar residue\ error on prediction from test,train.")
-    print(f"Look below: with {pca}")
-    a= round(y_train.mean(), 3)
-    b= round(RMSE(y_train_pred, y_train), 3)
-    c= round(RMSE(y_test_pred, y_test), 3)
-    d= round(y_train.std(), 3)
-    e= round(y_train_pred.std(), 3)
-    f= round(y_test.std(), 3)
-
-    print("Train without Model from raw data. mean:", a)
-    print("Train RMSE:", b )
-    print("Test RMSE:", c )
-    print("Raw Train STD", d)
-    print("Train_pred STD", e)
-    print("Test STD", f )
-    print("Conclusions: ")
-    print("Train STD Vs. Test STD:")
-    print("Train RMSE Vs. Test RMSE: RMSE should be similar but here the diff is  factors ")
-    print("RMSE/STD: focuses on prediction accuracy, while STD describes data variability.")
-    print("RMSE: Visualizing learning curves or comparing RMSE across different models can provide insights")
-    print("________________________________")
-    print("scatterplot")
-    plt.figure(figsize=(8, 6))
-    print("-------------scatterplot--------> x=y_test, y=y_test_pred --")
-    sns.scatterplot(x=y_test, y=y_test_pred)
-    xx = np.linspace(y_test.min(), y_test.max(), 100)
+    a, train_rmse, test_rmse, raw_train_std, train_pred_std, test_std, xx = model_summary(
+                                                      pca, y_test, y_test_pred, y_train, y_train_pred)
 
     dict_to_db = {
           "user": os.getlogin(),
           "Ver": ver,
           "Train without Model from raw data":a,
-           "train_rmse" : b,
-          "test_rmse" : c,
-          "raw_train_std" : d,
-          "train_pred_std" : e,
-          "test_std" : f,}
+           "train_rmse": train_rmse,
+          "test_rmse": test_rmse,
+          "raw_train_std": raw_train_std,
+          "train_pred_std": train_pred_std,
+          "test_std": test_std,}
 
-    ref = db.reference()
+    ref = create_firebase_admin()
     #clearfromdb(ref, ['-O1CamdoXgL3sG8aOW5G', 'O1CamszdCzx6mrlEkAu', '-O1CcvUk3rZD0iYCO76-','-O1CdFe49Ye4QqY9zW3J'])
 
     write_and_get_db(ref, dict_to_db)
@@ -195,6 +167,44 @@ def summary(model, X_train, X_test, y_train, y_test, pca, ver=1.0):
     plt.ylabel('predicted')
 
     return y_train_pred, y_test_pred
+
+
+def create_firebase_admin():
+    return db.reference()
+
+
+def model_summary(pca, y_test, y_test_pred, y_train, y_train_pred):
+    print("____________Learning Metric result ____________________")
+    print("train data is the data that created the model.")
+    print("train data is the data that i only have. test data is not static and be changed")
+    print("so when i have the model already after the fit inside the train function.")
+    print("I use the model to predict the y_train from X train. same for the X,y test.")
+    print("the model should have simmilar residue\ error on prediction from test,train.")
+    print(f"Look below: with {pca}")
+    a = round(y_train.mean(), 3)
+    b = round(RMSE(y_train_pred, y_train), 3)
+    c = round(RMSE(y_test_pred, y_test), 3)
+    d = round(y_train.std(), 3)
+    e = round(y_train_pred.std(), 3)
+    f = round(y_test.std(), 3)
+    print("Train without Model from raw data. mean:", a)
+    print("Train RMSE:", b)
+    print("Test RMSE:", c)
+    print("Raw Train STD", d)
+    print("Train_pred STD", e)
+    print("Test STD", f)
+    print("Conclusions: ")
+    print("Train STD Vs. Test STD:")
+    print("Train RMSE Vs. Test RMSE: RMSE should be similar but here the diff is  factors ")
+    print("RMSE/STD: focuses on prediction accuracy, while STD describes data variability.")
+    print("RMSE: Visualizing learning curves or comparing RMSE across different models can provide insights")
+    print("________________________________")
+    print("scatterplot")
+    plt.figure(figsize=(8, 6))
+    print("-------------scatterplot--------> x=y_test, y=y_test_pred --")
+    sns.scatterplot(x=y_test, y=y_test_pred)
+    xx = np.linspace(y_test.min(), y_test.max(), 100)
+    return a, b, c, d, e, f, xx
 
 
 ### Encoding
@@ -425,7 +435,7 @@ def handle_missing_values(df, action='impute'):
     return df_imputed
 
 
-def clean_data_retrivedsig(df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
+def clean_sigma_log(df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
     """
       gENERAL TO BOTH : df, learn_column , method
       sigma= clearedcolumn , cnt_std
@@ -464,13 +474,20 @@ def build_model(rf_model, df, learn_column, pca, ver):
     X = df.drop(columns=learn_column)  # these are our "features" that we use to predict from
     y = df[learn_column]  # this is what we want to learn to predict
 
-
     if pca:
         X_train, X_test, y_train, y_test = trainr_pca(rf_model, X, y)
+        return X_train, X_test, y_train, y_test
     else:
         X_train, X_test, y_train, y_test = train(rf_model, X, y)
-    eda_post_analysis(y_train)
-    y_train_pred, y_test_pred = summary(rf_model, X_train, X_test, y_train, y_test, pca, ver)
+        return X_train, X_test, y_train, y_test
+
+
+def predict_with_model(X_train, X_test, y_train, y_test, rf_model, ver, pca):
+
+    if pca:
+        pass  # TBD
+    else:
+        return predict_y(rf_model, X_train, X_test, y_train, y_test, pca, ver)
 
 
 def get_bool_from_ini(section, key):
@@ -493,9 +510,6 @@ def SampleFromDftrain(dftrain, skip):
     return sample_df
 
 def firebase_init():
-    import firebase_admin
-    from firebase_admin import credentials
-
     # Replace 'path/to/your/serviceAccountKey.json' with the actual path to your JSON file
     cred = credentials.Certificate('C:/Users/DELL/Documents/GitHub/ML_Superv_Reg_RandomForest/db17-22f40-firebase-adminsdk-6ko5w-986a994da9.json')
     firebase_admin.initialize_app(cred, {'databaseURL': 'https://db17-22f40-default-rtdb.firebaseio.com'})
@@ -606,7 +620,7 @@ def generate_submission_csv(csv_file_path, model, important_categ_column, learn_
     # Handle the same way as you handled the train CSV data - cleaning, filling, etc.
     df_valid = preprocess_and_extract_features(df_valid, important_categ_column, learn_column)
 
-    # Extract relevant features (assuming X2 is defined elsewhere)
+    # Extract relevant features
     X_valid = df_valid.set_index('SalesID')
     X_valid = df_valid
     # Check the shape of df_valid
@@ -615,25 +629,32 @@ def generate_submission_csv(csv_file_path, model, important_categ_column, learn_
     # Check the shape of X_valid
     print(f"Shape of X_valid: {X_valid.shape}")
 
-
-    # Make predictions
-    y_valid_pred = model.predict(X_valid)
-    y_valid_pred = pd.Series(y_valid_pred, index=X_valid.index, name='SalePrice')
-    y_valid_pred.index = df_valid['SalesID']
-   
-
-
+    y_valid_pred = predict_valid(X_valid, df_valid, model)
 
     # here there is no RMSE. due to that this is the real time data.
     # but i can compare to the test value.
 
+    submit_csv(y_valid_pred)
+
+
+def submit_csv(y_valid_pred):
     # Create a submission CSV file
     submission_filename = f'submission_{datetime.now().isoformat()}.csv'
     submission_filename = submission_filename.replace(":", "_")
     y_valid_pred.to_csv(submission_filename)
     print(f"Submission CSV file saved as '{submission_filename}'")
 
+
+def predict_valid(X_valid, df_valid, model):
+    # Make predictions
+    y_valid_pred = model.predict(X_valid)
+    y_valid_pred = pd.Series(y_valid_pred, index=X_valid.index, name='SalePrice')
+    y_valid_pred.index = df_valid['SalesID']
+    return y_valid_pred
+
+
 def preprocess_and_extract_features(dftrain, important_categ_column, learn_column):
+
          ## Consider to add it on pre analysis ##
     # eda_analysis(dftrain, learn_column, important_categ_column, False)
          ### Prepare Data
@@ -650,7 +671,7 @@ def preprocess_and_extract_features(dftrain, important_categ_column, learn_colum
     # dftrain.head()
     # print("--------------------Second try - after cleaning----------------------")
     ## sig: (df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
-    cleareddf = clean_data_retrivedsig(dftrain, learn_column, important_categ_column, 3, 'sigma',important_categ_column)
+    cleareddf = clean_sigma_log(dftrain, learn_column, important_categ_column, 3, 'sigma', important_categ_column)
     print("cleareddf.shape", cleareddf.shape)
     ## eda_analysis(cleareddf, learn_column, important_categ_column, True)
     return cleareddf
@@ -673,8 +694,44 @@ def load_job():
     # Now you can use 'loaded_rf' for predictions
     preds = loaded_rf.predict(X_test)
 
+def createfeatureobefirst():
+    from sklearn.ensemble import RandomForestRegressor
+
+    # Assuming you have X_train and y_train
+    rf = RandomForestRegressor(n_estimators=100, random_state=42)
+    rf.fit(X_train, y_train)
+
+    # Get feature importances
+    feature_importances = rf.feature_importances_
+
+    # Find the index of the desired feature
+    desired_feature_index = feature_names.index('desired_feature')
+
+    # Reorder features (move desired feature to the front)
+    new_X_train = X_train[:,
+                  [desired_feature_index] + [i for i in range(X_train.shape[1]) if i != desired_feature_index]]
+
+    # Retrain the model with reordered features
+    rf_reordered = RandomForestRegressor(n_estimators=100, random_state=42)
+    rf_reordered.fit(new_X_train, y_train)
+
 
 def main():
+
+    """
+    Model creation:
+        A. Pre:
+            1. feature eng. create columns ,exe_missing, exe_nonnumeric_code,  exe_exclusenonnumeric, exe_dropna, exe_dummies,
+            2. statitcs
+            3. outlier handling
+
+        B.
+            1. Model init - Hyper params
+
+        C. Post
+            1. Feature Importance, permutation,  RMSE Test\Train
+
+     """
 
     #SingletonINIUtility.clear()
     firebase_init()
@@ -716,7 +773,10 @@ def main():
     cleareddf = preprocess_and_extract_features(dftrain, important_categ_column, learn_column)
     print("cleareddf.shape", cleareddf.shape)
     # ************&&&&&&&&&&&&&&&&&***********************
-    build_model(rf_model, cleareddf, learn_column, False, 1.0)
+    X_train, X_test, y_train, y_test = build_model(rf_model, cleareddf, learn_column, False, 1.0)
+
+    y_train_pred, y_test_pred = predict_with_model(X_train, X_test, y_train, y_test, rf_model, 1.0, False)
+
     dftrain.head()
     # _______________________________________________________________________
     ## end ##

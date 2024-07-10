@@ -1,4 +1,9 @@
 
 train.csv
 valid.csv
+<<<<<<< Updated upstream
+=======
+submission_2024-07-09T19_33_59.906290.csv
+*.csv
+>>>>>>> Stashed changes
 *.csv
