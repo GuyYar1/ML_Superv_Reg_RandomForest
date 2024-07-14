@@ -4,7 +4,6 @@ from datetime import datetime
 from io import StringIO
 
 import firebase_admin
-import joblib
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
@@ -29,9 +28,6 @@ from firebase_admin import credentials
 from sklearn.model_selection import RandomizedSearchCV
 from scipy.stats import randint
 from sklearn.preprocessing import PolynomialFeatures
-from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import IterativeImputer
-
 
 def download_from_gdrive(url, filename):
     # Extract the file ID from the URL
@@ -45,8 +41,8 @@ def download_from_gdrive(url, filename):
         gdown.download(download_url, filename, quiet=False)
         print(f"File downloaded as: {filename}")
 
-
 def get_df_Url():
+
     ' the two url should be in config'
     train_url = initialize_ini().get_value('DATASET', 'train_url')
     valid_url = initialize_ini().get_value('DATASET', 'valid_url')
@@ -82,6 +78,7 @@ def get_df(url_en):
 
 
 def initialize_ini():
+
     """        
     :return: 
     """""" Get value from section 'TRAIN'
@@ -94,7 +91,6 @@ def initialize_ini():
     ini_util = SingletonINIUtility(ini_file)
     ini_util.read_ini()
     return ini_util
-
 
 def train(model, X, y):
     # Split the data into training and testing sets
@@ -123,7 +119,6 @@ def train(model, X, y):
     print("________________________________")
     return X_train, X_test, y_train, y_test
 
-
 def trainr_pca(model, X, y):
     # Split the data into training and testing sets
     pca = PCA(n_components=4)  # Keep 2 components
@@ -146,6 +141,7 @@ def trainr_pca(model, X, y):
     return X_train, X_test, y_train, y_test
 
 
+
 def RMSE(y_pred, y_true):
     # Calculate the root mean squared error (RMSE)
     return ((y_pred - y_true) ** 2).mean() ** 0.5
@@ -156,25 +152,27 @@ def predict_y(model, X_train, X_test, y_train, y_test, pca, ver=1.0, subModel=1)
     y_train_pred = model.predict(X_train)
     y_test_pred = model.predict(X_test)
     a, train_rmse, test_rmse, raw_train_std, train_pred_std, test_std, xx = model_summary(
-        pca, y_test, y_test_pred, y_train, y_train_pred, subModel)
+                                                      pca, y_test, y_test_pred, y_train, y_train_pred, subModel)
 
-    a = float((get_int_from_ini('TRAIN', 'max_depth')))
+
+    a= float((get_int_from_ini('TRAIN', 'max_depth')))
+
 
     dict_to_db = {
-        "user": os.getlogin(),
-        "submodel": subModel,
-        "Ver": ver,
-        "Train without Model from raw data": a,
-        "train_rmse": train_rmse,
-        "test_rmse": test_rmse,
-        "raw_train_std": raw_train_std,
-        "train_pred_std": train_pred_std,
-        "test_std": test_std,
-        "max_depth": float(get_int_from_ini('TRAIN', 'max_depth')),
-        "min_samples_split": float(get_int_from_ini('TRAIN', 'min_samples_split')),
-        "min_samples_leaf": float(get_int_from_ini('TRAIN', 'min_samples_leaf')),
-        "n_estimators": float(get_int_from_ini('TRAIN', 'n_estimators')),
-        "max_features": float(get_int_from_ini('TRAIN', 'max_features'))
+          "user": os.getlogin(),
+          "submodel": subModel,
+          "Ver": ver,
+          "Train without Model from raw data": a,
+          "train_rmse": train_rmse,
+          "test_rmse": test_rmse,
+          "raw_train_std": raw_train_std,
+          "train_pred_std": train_pred_std,
+          "test_std": test_std,
+          "max_depth": float(get_int_from_ini('TRAIN', 'max_depth')),
+          "min_samples_split": float(get_int_from_ini('TRAIN', 'min_samples_split')),
+          "min_samples_leaf": float(get_int_from_ini('TRAIN', 'min_samples_leaf')),
+          "n_estimators": float(get_int_from_ini('TRAIN', 'n_estimators')),
+          "max_features": float(get_int_from_ini('TRAIN', 'max_features'))
     }
 
     # ref = create_firebase_admin()
@@ -257,8 +255,7 @@ def eda_analysis(df, learn_column, categ_heu, full=False):
         "-------------describe--------> perform only for numeric values which has numeric dtype a statistical  view.--------")
     print(df.describe())  # perform only for numeric values which has numeric dtype a statistical  view.
     print("Look here")
-    print(
-        "-------------pairplot--------> show a plot of mix numeric values, can use hue as category distribution--------")
+    print("-------------pairplot--------> show a plot of mix numeric values, can use hue as category distribution--------")
     sns.pairplot(df)
     plt.show(block=True)  # Display the plot
 
@@ -269,7 +266,7 @@ def eda_analysis(df, learn_column, categ_heu, full=False):
     sns.displot(data=df, x=learn_column, kde=True)  # visualize the distribution of tip amounts. kernel density estimate
     plt.show(block=True)  # Display the plot
     sns.displot(data=df, x='ModelID', kde=True)  # visualize the distribution of tip amounts. kernel density estimate
-    plt.show(block=True)  # Display the plot
+    plt.show(block=True) # Display the plot
     print(
         "-------------df.value_counts--------> for each column show you the distribution.  text and figure bar histogram--")
 
@@ -281,7 +278,6 @@ def eda_analysis(df, learn_column, categ_heu, full=False):
         plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for readability
         plt.show()
         print("________________________________")
-
 
 def eda_post_analysis(y_train):
     ### a little bit more EDA
@@ -342,15 +338,14 @@ def impute_nan(df, method='mean'):
     return df
 
 
-def prepare_data(dftrain, exe_missing=False, exe_nonnumeric_code=False, exe_exclusenonnumeric=False,
-                 exe_dropna=False, exe_dummies=False, exe_FromfilterYear=1001, print_info=False,
-                 SubModelPerCat='ProductGroupDesc', mode="validation", df_valid=None):
+def prepare_data(df, exe_missing=False, exe_nonnumeric_code=False, exe_exclusenonnumeric=False,
+                 exe_dropna=False, exe_dummies=False, exe_FromfilterYear=1001, print_info=False):
     """
-    Prepare data by  handling missing values, converting non-numeric columns, excluding non-numeric columns,
+    Prepare data by handling missing values, converting non-numeric columns, excluding non-numeric columns,
     dropping rows with missing values, and creating one-hot encoded columns.
 
     Args:
-        dftrain (pd.DataFrame): Input DataFrame.
+        df (pd.DataFrame): Input DataFrame.
         exe_missing (bool): Execute missing value handling.
         exe_nonnumeric_code (bool): Execute non-numeric column conversion to codes.
         exe_exclusenonnumeric (bool): Execute exclusion of non-numeric columns.
@@ -358,69 +353,19 @@ def prepare_data(dftrain, exe_missing=False, exe_nonnumeric_code=False, exe_excl
         exe_dummies (bool): Execute one-hot encoding.
         print_info (bool): Print DataFrame info at each step.
         exe_FromfilterYear: start from which year to filter . predict future so need more releavnt data
-        SubModelPerCat: keep
     Returns:
         pd.DataFrame: Processed DataFrame.
     """
-
-    if mode == 'validation':
-        df = df_valid
-        df_other = dftrain
-    else:
-        df = dftrain
-        df_other = dftrain
-
-    # Assuming 'df' is your DataFrame
-    non_numeric_columns = df.select_dtypes(exclude='number').columns
-    df[non_numeric_columns] = df[non_numeric_columns].apply(lambda x: x.str.lower().str.strip())
-
     df_orig = df.copy()
-    proddef = extract_column(df_orig, 'ProductGroupDesc')  # consider to remove - fix the bug check later.
     print(df_orig.head().T)
 
-    if exe_FromfilterYear > 0:  #& mode != "validation"
-        print("filter Year  DataFrame from:", exe_FromfilterYear)
+    if exe_FromfilterYear > 0:
+        print("filter Year  DataFrame from:", exe_FromfilterYear )
         df = df[df['YearMade'] > exe_FromfilterYear]
 
     if print_info:
         print("Original DataFrame info:")
         print(df.info())
-
-    if exe_missing:
-        print("exe_missing")
-        # this logic can enters 0 on row for the category what means that it will fuck the data.
-        df = handle_missing_values(df, mode, df_other, action='impute')  # it was IMPUTE and works but still
-        if print_info:
-            print("# Check to see how many examples were missing in `auctioneerID` column")
-            print(df.value_counts())
-
-    if exe_nonnumeric_code:
-        # Create a copy of the DataFrame to avoid modifying the original
-        # Convert non-numeric columns to codes
-        for column in df.select_dtypes(exclude=['number']).columns:
-            if not pd.api.types.is_numeric_dtype(df[column]):
-                df[column] = pd.Categorical(df[column]).codes + 1
-
-        # Optionally, print information about the DataFrame
-        if print_info:
-            print("After converting non-numeric columns to codes:")
-            print(df.info())
-
-    if exe_dummies:
-        print("exe_dummies")  # one-hot encoded
-        # Consider not using this with random forests
-        df = pd.get_dummies(df)  # Converts categorical variables into numerical representations
-        if print_info:
-            print("After creating one-hot encoded columns:")
-            print(df.value_counts())
-
-    if exe_exclusenonnumeric:
-        print("exe_exclusenonnumeric")
-        df = df.select_dtypes(include='number')
-        if print_info:
-            print("if i ran exe_nonnumeric_code before so this should not have work to do")
-            print("After excluding non-numeric columns:")
-            print(df.value_counts())
 
     if exe_dropna:
         print("exe_dropna")
@@ -429,16 +374,58 @@ def prepare_data(dftrain, exe_missing=False, exe_nonnumeric_code=False, exe_excl
             print("After dropping rows with missing values:")
             print("df_tmp.isna().sum()", df.isna().sum())
 
-    df = concatenate_dfs(df, proddef, SubModelPerCat)  # consider to remove - fix the bug check later.
+    if exe_nonnumeric_code:
+        # Create a copy of the DataFrame to avoid modifying the original
+        df_copy = df.copy()
+
+        # Convert non-numeric columns to codes
+        for column in df_copy.select_dtypes(exclude=['number']).columns:
+            if not pd.api.types.is_numeric_dtype(df_copy[column]):
+                df_copy[column] = pd.Categorical(df_copy[column]).codes + 1
+
+        # Optionally, print information about the DataFrame
+        if print_info:
+            print("After converting non-numeric columns to codes:")
+            print(df_copy.info())
+
+    if exe_missing:
+        print("exe_missing")
+        df = handle_missing_values(df, action='missing_category') # it was IMPUTE and works but still
+        if print_info:
+            print("# Check to see how many examples were missing in `auctioneerID` column")
+            print(df.value_counts())
+
+    if exe_dummies:
+        print("exe_dummies")  # one-hot encoded
+        # Consider not using this with random forests
+        df = pd.get_dummies(df)  # Converts categorical variables into numerical representations
+        if print_info:
+            print("After creating one-hot encoded columns:")
+            print(df.info())
+
+    if exe_exclusenonnumeric:
+        print("exe_exclusenonnumeric")
+        df = df.select_dtypes(include='number')
+        if print_info:
+            print("if i ran exe_nonnumeric_code before so this should not have work to do")
+            print("After excluding non-numeric columns:")
+            print(df.info())
+
+
+
+
+
+    # Temp due to error ValueError: could not convert string to float: 'Medium'
+    # Assuming 'UsageBand' is the column with 'Medium'
+    df['UsageBand'] = df['UsageBand'].replace('Medium', -1)
+    # Verify the updated values
+    print(df['UsageBand'].unique())
 
     return df
 
-
-def handle_missing_values(df, mode="validation", df_other=None, action='impute'):
+def handle_missing_values(df, action='impute'):
     """
     Handles missing values (NaNs) in a DataFrame.
-
-
 
     Args:
         df (pd.DataFrame): The input DataFrame.
@@ -448,48 +435,20 @@ def handle_missing_values(df, mode="validation", df_other=None, action='impute')
     Returns:
         pd.DataFrame: DataFrame with missing values handled.
     """
-    # in ML when i work in mode == 'validation' i need to look into the data of the dftrain and took the  mean group
-    # or most frequent value of the group  and set this value on the valid df.
-
-    # if mode == 'validation':
-    #     df = df_valid
-    #     df_other = dftrain
-    # else:
-    #     df = dftrain
-    #     df_other = dftrain
-
-    total_nan_countbefore = df.isna().sum().sum()
-    print(" total_nan_count before  impute - it should be greater num", total_nan_countbefore)
-
     if action == 'impute':
         # Separate numeric and categorical columns
         numeric_cols = df.select_dtypes(include=['number']).columns
         categorical_cols = df.select_dtypes(exclude=['number']).columns
 
-        # Initialize the iterative imputer for numeric columns
-        imputer = IterativeImputer(max_iter=10, random_state=0)
+        # Impute missing values with mean for numeric columns
+        imputer = SimpleImputer(strategy='mean', add_indicator=False)
+        df_imputed_numeric = pd.DataFrame(imputer.fit_transform(df[numeric_cols]), columns=numeric_cols)
 
-        # Fit and transform the numeric columns - df other is in validation dftrain. in train is the dftrain
-        # act differently if the mode is validation.  but i set the value of df_other to be tdtrain on both modes.
-        # df is df_valid in mode validation and otherwise df is dftrain.
-        df_imputed_numeric = pd.DataFrame(imputer.fit_transform(df_other[numeric_cols]), columns=numeric_cols)
+        # Treat missing values as -1 for categorical columns
+        df_imputed_categorical = df[categorical_cols].fillna(-1)
 
-        # Calculate mean for each numeric column (excluding 'ModelID')
-        group_means = df_imputed_numeric.drop(columns=['ModelID']).mean()
-
-        # Impute missing numeric values using group-wise means
-        for col in numeric_cols:
-            if col != 'ModelID':  # Exclude 'ModelID' itself
-                df_imputed_numeric.loc[df_imputed_numeric[col].isna(), col] = df_imputed_numeric.loc[
-                    df_imputed_numeric[col].isna(), 'ModelID'].map(group_means[col])
-
-        # Impute categorical columns with most frequent value based on 'ProductGroupDesc'
-        for col in categorical_cols:
-            if col != 'ProductGroupDesc':  # Exclude 'ProductGroupDesc' itself
-                most_frequent_value = df_other.groupby('ProductGroupDesc')[col].value_counts().idxmax()
-                df.loc[:, col] = most_frequent_value[1]  #  Assign directly to the column
         # Combine the imputed numeric and categorical columns
-        df_imputed = pd.concat([df_imputed_numeric, df[categorical_cols]], axis=1)
+        df_imputed = pd.concat([df_imputed_numeric, df_imputed_categorical], axis=1)
 
     elif action == 'missing_category':
         # Treat missing values as -1 (for all columns)
@@ -498,11 +457,7 @@ def handle_missing_values(df, mode="validation", df_other=None, action='impute')
     else:
         raise ValueError("Invalid action. Choose 'impute' or 'missing_category'.")
 
-    total_nan_countafter = df_imputed.isna().sum().sum()
-    print(" total_nan_count- it should be lower num, due to the imputation", total_nan_countafter)
-    print(" we handled cases of imputation", (total_nan_countbefore - total_nan_countafter))
     return df_imputed
-
 
 def clean_sigma_log(df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat',
                     mode="Validation"):
@@ -557,22 +512,23 @@ def build_model(rf_model, df, learn_column, pca, ver):
 
 
 def columns_to_drop(X, skip=True, learn_column=None):
+
     if skip:
         return X
 
     columntodrop = ['MachineID', 'auctioneerID', 'Backhoe_Mounting', 'Hydraulics', 'Pushblock',
-                    'Ripper',
-                    'Scarifier',
-                    'Tip_Control',
-                    'Tire_Size',
-                    'Coupler_System',
-                    'Grouser_Tracks',
-                    'Hydraulics_Flow',
-                    'Undercarriage_Pad_Width',
-                    'Stick_Length',
-                    'Thumb',
-                    'Pattern_Changer',
-                    'Grouser_Type']
+                                                                                            'Ripper',
+                                                                                            'Scarifier',
+                                                                                            'Tip_Control',
+                                                                                            'Tire_Size',
+                                                                                            'Coupler_System',
+                                                                                            'Grouser_Tracks',
+                                                                                            'Hydraulics_Flow',
+                                                                                            'Undercarriage_Pad_Width',
+                                                                                            'Stick_Length',
+                                                                                            'Thumb',
+                                                                                            'Pattern_Changer',
+                                                                                            'Grouser_Type']
     check_col_exists_df(X, columntodrop)
 
     X = X.drop(columns=columntodrop)
@@ -590,27 +546,27 @@ def check_col_exists_df(X, columntodrop):
 
 
 def ColumnsToKeep(X, skip=True, learn_column=None):
+
     print("column to Keep")
     if skip:
         return X
 
     # Assuming X is your DataFrame
-    columns_to_keep1 = ['SalesID', 'YearMade', 'range_min', 'ModelID', 'HandNum', 'saleYear_y', 'saleMonth', 'saleDay',
-                        'saleDayofweek', 'saleDayofyear', 'ProductGroupDesc']
-    columns_to_keep2 = ['SalesID', 'YearMade', 'range_min', 'ProductGroupDesc', 'HandNum', 'saleYear_y', 'saleMonth',
-                        'saleDay',
-                        'saleDayofweek', 'saleDayofyear', 'ModelID',
-                        'datasource', 'auctioneerID', 'MachineHoursCurrentMeter',
-                        'UsageBand', 'fiModelDesc',
-                        'Undercarriage_Pad_Width', 'Stick_Length', 'Thumb', 'Pattern_Changer',
-                        'Grouser_Type', 'Backhoe_Mounting', 'Blade_Type', 'Travel_Controls',
-                        'Differential_Type', 'Steering_Controls']
+    columns_to_keep1 = ['SalesID', 'YearMade', 'range_min', 'HandNum', 'saleYear_y_y', 'saleMonth', 'saleDay',
+                       'saleDayofweek', 'saleDayofyear']
+    columns_to_keep2 = ['SalesID', 'YearMade', 'range_min', 'HandNum', 'saleYear_y_y', 'saleMonth', 'saleDay',
+    'saleDayofweek', 'saleDayofyear',
+    'datasource', 'auctioneerID', 'MachineHoursCurrentMeter',
+    'UsageBand', 'saledate', 'fiModelDesc',
+    'Undercarriage_Pad_Width', 'Stick_Length', 'Thumb', 'Pattern_Changer',
+    'Grouser_Type', 'Backhoe_Mounting', 'Blade_Type', 'Travel_Controls',
+    'Differential_Type', 'Steering_Controls']
 
-    columns_to_keep = columns_to_keep1
+    columns_to_keep = columns_to_keep2
 
     #, 'InteractionFeature', 'Decade', 'LogMachineHours']
 
-    if not (learn_column is None):
+    if not(learn_column is None):
         columns_to_keep.append(learn_column)
 
     # Alternatively, you can use the drop method to achieve the same result
@@ -619,6 +575,7 @@ def ColumnsToKeep(X, skip=True, learn_column=None):
 
 
 def predict_with_model(X_train, X_test, y_train, y_test, rf_model, ver, pca, subModel):
+
     if pca:
         pass  # TBD
     else:
@@ -628,11 +585,9 @@ def predict_with_model(X_train, X_test, y_train, y_test, rf_model, ver, pca, sub
 def get_bool_from_ini(section, key):
     return ini_util.get_value(section, key).strip().lower() == 'true'
 
-
 def get_int_from_ini(section, key):
     value = ini_util.get_value(section, key)
     return int(value.strip())  # Convert to integer
-
 
 def SampleFromDftrain(dftrain, skip):
     # Short time - remove later
@@ -645,13 +600,10 @@ def SampleFromDftrain(dftrain, skip):
         print('SampleFromDftrain', sample_df.shape)
     return sample_df
 
-
 def firebase_init():
     # Replace 'path/to/your/serviceAccountKey.json' with the actual path to your JSON file
-    cred = credentials.Certificate(
-        'C:/Users/DELL/Documents/GitHub/ML_Superv_Reg_RandomForest/db17-22f40-firebase-adminsdk-6ko5w-986a994da9.json')
+    cred = credentials.Certificate('C:/Users/DELL/Documents/GitHub/ML_Superv_Reg_RandomForest/db17-22f40-firebase-adminsdk-6ko5w-986a994da9.json')
     firebase_admin.initialize_app(cred, {'databaseURL': 'https://db17-22f40-default-rtdb.firebaseio.com'})
-
 
 def write_and_get_db(iref, dict):
     # Create a reference to the root of the database
@@ -659,7 +611,6 @@ def write_and_get_db(iref, dict):
     iref.child('messages').push(dict)
     data = iref.get()
     print("Data retrieved:", data)
-
 
 # def clearfromdb(iref, keys):
 #     key1 = '-O1CF0lqKOd6pyN2KdSB'
@@ -669,9 +620,8 @@ def write_and_get_db(iref, dict):
 #     iref.child('messages').child(key2).remove()
 #
 def clearfromdb(iref, keys):
-    for key in keys:
-        iref.child('messages').child(key).delete()
-
+   for key in keys:
+         iref.child('messages').child(key).delete()
 
 def parse_product_string(product_series):
     """
@@ -714,16 +664,9 @@ def add_additional_columns(df, Prod_type, range_min, range_max, unit):
     return df
 
 
-def split_and_create_columns(dftrain, columntoextract='fiProductClassDesc', mode="validation", df_valid=None):
-    df = pd.DataFrame()
-
-    if mode == 'validation':
-        df = df_valid
-    else:
-        df = dftrain
-
+def split_and_create_columns(df, columntoextract='fiProductClassDesc', mode="validation"):
     df = fiproduct_split_submodels(columntoextract, df)
-    #df = handnum_feature(df)  # check if it is done in the train df -
+    df = handnum_feature(df)
     # Assuming you have a DataFrame 'df' and the categorical column is 'ProductGroup'
 
     # df = target_encode_categorical(df, cat_column='ProductGroup', target_column='SalePrice')
@@ -732,26 +675,18 @@ def split_and_create_columns(dftrain, columntoextract='fiProductClassDesc', mode
     # df = bin_year_into_decades(df)  -failed
     # df = log_transform_machine_hours(df)
 
-    if mode == 'validation':
-        df_valid = df
-        return df_valid
-    else:
-        dftrain = df
-        return dftrain
-
+    return df
 
 def target_encode_categorical(df, cat_column, target_column):
     target_means = df.groupby(cat_column)[target_column].mean()
     df[f'{cat_column}_encoded'] = df[cat_column].map(target_means)
     return df
 
-
 def create_interaction_features(df):
     'capture the interaction between the year of manufacture and the minimum range.'
     # Example: Multiply 'Feature1' and 'Feature2' to create a new interaction feature
     df['InteractionFeature'] = df['YearMade'] * df['range_min']
     return df
-
 
 def generate_polynomial_features(df, degree=2):
     poly = PolynomialFeatures(degree=degree, include_bias=False)
@@ -760,13 +695,11 @@ def generate_polynomial_features(df, degree=2):
     df = pd.concat([df, poly_df], axis=1)
     return df
 
-
 def bin_year_into_decades(df):
     bins = [1980, 1990, 2000, 2010, 2020]  # Adjust the bins as needed
     labels = ['1980s', '1990s', '2000s', '2010s']
     df['Decade'] = pd.cut(df['YearMade'], bins=bins, labels=labels)
     return df
-
 
 def log_transform_machine_hours(df):
     df['LogMachineHours'] = np.log1p(df['MachineHoursCurrentMeter'])
@@ -776,10 +709,10 @@ def log_transform_machine_hours(df):
 def handnum_feature(df):
     # Assuming 'df' is your DataFrame and 'Sale_Date' is a datetime column
     # Convert 'Sale_Date' to datetime if it's not already in that format
-    df['saleYear_y'] = pd.to_datetime(df['saleYear_y'])
+    df['saleYear_y_y'] = pd.to_datetime(df['saleYear_y_y'])
 
     # Group by 'MachineID' and count the number of unique sale dates
-    hand_num_df = df.groupby('MachineID')['saleYear_y'].nunique().reset_index()
+    hand_num_df = df.groupby('MachineID')['saleYear_y_y'].nunique().reset_index()
 
     # Merge the 'hand_num_df' back into the original DataFrame
     df = pd.merge(df, hand_num_df, on='MachineID', how='left')
@@ -808,76 +741,51 @@ def fiproduct_split_submodels(columntoextract, df):
     return df
 
 
-def generate_submission_csv(csv_file_path, modellist1, important_categ_column, learn_column, dftrain,
-                            df_validorig):
-    """                     ("valid.csv", list1, important_categ_column, learn_column, df_validorig)
+def generate_submission_csv(csv_file_path, model, important_categ_column, learn_column, catgeindx, dftrain):
+    """
     Generates a submission CSV file with predicted SalePrice based on the provided model.
 
     Args:
         csv_file_path (str): Path to the input CSV file.
-        modellist1: model_list[str(df_name)] = df_name       model_list[[key_model_path] = rf_model
-        important_categ_column:
-        learn_column:
-        catgeindx:
-        dftrain:
-        df_validorig:
+        model: Trained machine learning model.
 
     Returns:
         None (Creates a CSV file with the submission data).
     """
     # Load the CSV file
-    print("generate_submission_csv")
+
     project_root1 = r"C:\Users\DELL\Documents\GitHub\ML_Superv_Reg_RandomForest"
     valid_file_path1 = os.path.join(project_root1, csv_file_path)
-    df_valid = pd.read_csv(valid_file_path1)  # 11574
-    df_validorig = df_valid.copy()
+    df_valid = pd.read_csv(valid_file_path1)
 
     # Handle the same way as you handled the train CSV data - cleaning, filling, etc.
-    df_valid = preprocess_and_extract_features(dftrain, important_categ_column, learn_column, "validation", df_valid)
+    df_valid = preprocess_and_extract_features(df_valid, important_categ_column, learn_column, "validation")
     # got dictionary  with small DF
-    df_valid = {group: sub_df for group, sub_df in df_valid.groupby((ini_util.get_value('PREPROCESS',
-                                                                                        'SubModelPerCat')))}
-    df_dict = df_valid.copy()
+    df_dict = df_valid
+    ind = 0
+    for df_name, df_valid in df_dict.items():
+        if catgeindx == df_name:
+            print(f"--  {ind}  -- predict_valid started for:{learn_column}")
+            df_valid = ColumnsToKeep(df_valid, False)
+            # Extract relevant features
+            X_valid = df_valid.set_index('SalesID')
+            X_valid = df_valid
+             # Check the shape of df_valid
+            print(f"Shape of df_valid: {df_valid.shape}")
 
+            # Check the shape of X_valid
+            print(f"Shape of X_valid: {X_valid.shape}")
 
+            y_valid_pred = predict_valid(X_valid, df_valid, model)
+            submit_csv(y_valid_pred)
+            return y_valid_pred
 
-    ind = 1
-    counter_total_dfs_valid = 0
-
-    y_valid_pred_dict = {}
-
-    for model_from_list, df_from_dict in zip(modellist1, df_dict.values()):
-        print(f"List item: {model_from_list}, Dictionary item: {df_from_dict}")
-        print("the assumption that first model is for cat i and df_dict is for cat i ")
-        len_smal_df = len(df_from_dict)
-        counter_total_dfs_valid = counter_total_dfs_valid + len_smal_df
-
-        print(f" The amount of rows in valid is: {len_smal_df}  in small df name cat:{ind} ")
-        print(f"--  {ind}  -- predict_valid started for:{learn_column}")
-
-        df_valid = ColumnsToKeep(df_from_dict, False)
-        # Extract relevant features
-        X_valid = df_valid.set_index('SalesID')
-        X_valid = df_valid
-        # Check the shape of df_valid
-        print(f"Shape of df_valid: {df_valid.shape}")
-        # Check the shape of X_valid
-        print(f"Shape of X_valid: {X_valid.shape}")
-        file_path_jobmodel = model_from_list[str(ind)]
-        # key_model_path
-        y_valid_pred = predict_valid(X_valid, df_valid, file_path_jobmodel)
-        submit_csv(y_valid_pred)
-        print(f"counter_total_dfs_valid is {counter_total_dfs_valid} should be 11574")
-        listitem = [ind, file_path_jobmodel, y_valid_pred]
-        y_valid_pred_dict[ind] = listitem
-        ind += 1
-
-    return y_valid_pred_dict, df_validorig
 
     # here there is no RMSE. due to that this is the real time data.
     # but i can compare to the test value.
     # Assuming you have a DataFrame 'df' with columns 'p' and 'x'
     #rmse_pandas = ((X_valid[''] - X_valid['x']) ** 2).mean() ** 0.5
+
 
 
 def submit_csv(y_valid_pred):
@@ -889,30 +797,19 @@ def submit_csv(y_valid_pred):
 
 
 def predict_valid(X_valid, df_valid, model):
-
-    # model is the path to the job saved before when it was train off
-    # Later, load the model from the file
-    loaded_rf = joblib.load(model)
-    # Now you can use 'loaded_rf' for predictions
-    y_valid_pred = loaded_rf.predict(X_valid)
-    y_valid_pred = pd.Series(y_valid_pred, index=X_valid.index, name='SalePrice')
+    # Make predictions
+    y_valid_pred = model.predict(X_valid)
+    y_valid_pred = pd.Series(y_valid_pred, index=X_valid.index, name='SalePrice').round(2)
     y_valid_pred.index = df_valid['SalesID']
     return y_valid_pred
 
 
-def create_date_features(dftrain, mode, df_valid=None):
-    df = pd.DataFrame()
-
-    if mode == 'validation':
-        df = df_valid
-    else:
-        df = dftrain
-
+def create_date_features(df, mode, df_other=None):
     print(f"\nCreate Date Features (Operation mode: {mode})")
     df['saledate'] = pd.to_datetime(df['saledate'])
 
     # Add datetime parameters
-    df['saleYear_y'] = df['saledate'].dt.year
+    df['saleYear_y_y'] = df['saledate'].dt.year
     df['saleMonth'] = df['saledate'].dt.month
     df['saleDay'] = df['saledate'].dt.day
     df['saleDayofweek'] = df['saledate'].dt.dayofweek
@@ -921,98 +818,97 @@ def create_date_features(dftrain, mode, df_valid=None):
     # Drop original saledate
     df.drop('saledate', axis=1, inplace=True)
 
-    if mode == 'validation':
-        df_valid = df
-        return df_valid
-    else:
-        dftrain = df
-        return dftrain
+    return df
 
 
-def remove_unconsistent_rows(dftrain, mode, dfvalid=None):
-    print("\nRemove Unconsistent Rows")
-    print("Operation mode: {mode}")
+def remove_unconsistent_rows (df, mode, other_df= None):
 
-    # df_Machines_Sorted = df.sort_values(by=['Machine_ID', 'Year_Made','Sale_Date'], ascending=[True, True, True])
+  print ("\nRemove Unconsistent Rows")
+  print ("Operation mode: {mode}")
 
-    # -----------------------------------------------------------------------------
+  # df_Machines_Sorted = df.sort_values(by=['Machine_ID', 'Year_Made','Sale_Date'], ascending=[True, True, True])
 
-    # Group by 'Machine_ID' and check for uniqueness in 'COL1', 'COL2', 'COL3' etc.
-    # Grouping:
-    # The DataFrame df is grouped by the Machine_ID column using groupby().
+  # -----------------------------------------------------------------------------
 
-    # Aggregation:
-    # For each group, the agg() function is used to compute the number of unique values (nunique)
-    # in COL1, COL2, and COL3.
+  # Group by 'Machine_ID' and check for uniqueness in 'COL1', 'COL2', 'COL3' etc.
+  # Grouping:
+  # The DataFrame df is grouped by the Machine_ID column using groupby().
 
-    # The result:
-    # A new DataFrame grouped where each row corresponds to a Machine_ID,
-    # and the columns contain the count of unique values in each specified column.
+  # Aggregation:
+  # For each group, the agg() function is used to compute the number of unique values (nunique)
+  # in COL1, COL2, and COL3.
 
-    if 1 != 1:  # mode != 'train':
-        print('Execution is not allowed in {mode} mode. allowed only in train mode')
-        return (df)
-    else:
-        print('Removing unconsistent group rows...')
+  # The result:
+  # A new DataFrame grouped where each row corresponds to a Machine_ID,
+  # and the columns contain the count of unique values in each specified column.
 
-        Machine_ID_Grouped_df = df.groupby('MachineID').agg({
-            'ModelID': 'nunique',
-            'fiBaseModel': 'nunique',
-            'YearMade': 'nunique',
-            # 'Fi_Secondary_Desc'         : 'nunique',
-            # 'Fi_Model_Series'           : 'nunique',
-            # 'Fi_Model_Descriptor'       : 'nunique',
-            # 'Product_Size'              : 'nunique',
-            # 'Fi_Product_Class_Desc'     : 'nunique',
-            # 'Product_Group'             : 'nunique',
-        })
+  if 1!=1:  # mode != 'train':
+    print ('Execution is not allowed in {mode} mode. allowed only in train mode')
+    return (df)
+  else:
+    print('Removing unconsistent group rows...')
 
-        # Create a mask where True indicates all values in the group are the same
-        # Comparison:
-        # (grouped == 1) creates a boolean DataFrame where each cell is True if the corresponding cell in grouped is equal to 1
-        # (meaning all values in that column for that Machine_ID are the same).
-
-        # Aggregation: .all(axis=1) combines the boolean values across columns.
-        # For each row (i.e., for each Machine_ID), it returns True if all columns are True
-        # (i.e., all specified columns have exactly one unique value in that group).
-
-        mask = (Machine_ID_Grouped_df == 1).all(axis=1)
-
-        # Add the mask to the original DataFrame
-        # Mapping:
-        # The map() function maps the boolean mask created for each Machine_ID back to the original DataFrame.
-        # This adds a new column Mask to df, where each row indicates whether all specified columns have the same value for that Machine_ID.
-
-        df['Mask'] = df['MachineID'].map(mask)
-
-        # Count the number of True and False values in the 'Mask' column
-        mask_counts = df['Mask'].value_counts()
-        print("\nDelete unconsistent rows per Machine ID Grouping")
-        print(f"Number of rows input df:{len(df)}")
-        print(f"Number of False Bad values to FILTER: {mask_counts[False]}")
-        print(f"Number of True Good values to STAY: {mask_counts[True]}")
-
-        # Filtering Out Rows Where the Mask is False
-        # Boolean Indexing:
-        # This line uses boolean indexing to filter the DataFrame.
-        # The condition df['Mask'] returns a boolean Series where the value is True for rows where the Mask column is True and False otherwise.
-
-        # Filtering:
-        # The DataFrame is filtered to include only the rows where the Mask column is True.
-        # The result is stored in df_filtered.
-
-        df_filtered = df[df['Mask']]
-
-        # Drop the Mask Column
-        df_filtered = df_filtered.drop(columns=['Mask'])
-
-        print(f"Number of rows output df:{len(df_filtered)}")
-
-        # df_filtered.head(10)
-        return (df_filtered)
+    Machine_ID_Grouped_df = df.groupby('MachineID').agg({
+      'ModelID'                  : 'nunique',
+      'fiBaseModel'             : 'nunique',
+      'YearMade'                 : 'nunique',
+    # 'Fi_Secondary_Desc'         : 'nunique',
+    # 'Fi_Model_Series'           : 'nunique',
+    # 'Fi_Model_Descriptor'       : 'nunique',
+    # 'Product_Size'              : 'nunique',
+    # 'Fi_Product_Class_Desc'     : 'nunique',
+    # 'Product_Group'             : 'nunique',
+      })
 
 
-def cleans_tire_size(dftrain, mode, dfvalid=None):
+    # Create a mask where True indicates all values in the group are the same
+    # Comparison:
+    # (grouped == 1) creates a boolean DataFrame where each cell is True if the corresponding cell in grouped is equal to 1
+    # (meaning all values in that column for that Machine_ID are the same).
+
+    # Aggregation: .all(axis=1) combines the boolean values across columns.
+    # For each row (i.e., for each Machine_ID), it returns True if all columns are True
+    # (i.e., all specified columns have exactly one unique value in that group).
+
+    mask = (Machine_ID_Grouped_df == 1).all(axis=1)
+
+    # Add the mask to the original DataFrame
+    # Mapping:
+    # The map() function maps the boolean mask created for each Machine_ID back to the original DataFrame.
+    # This adds a new column Mask to df, where each row indicates whether all specified columns have the same value for that Machine_ID.
+
+    df['Mask'] = df['MachineID'].map(mask)
+
+    # Count the number of True and False values in the 'Mask' column
+    mask_counts = df['Mask'].value_counts()
+    print("\nDelete unconsistent rows per Machine ID Grouping")
+    print(f"Number of rows input df:{len(df)}")
+    print(f"Number of False Bad values to FILTER: {mask_counts[False]}")
+    print(f"Number of True Good values to STAY: {mask_counts[True]}")
+
+
+    # Filtering Out Rows Where the Mask is False
+    # Boolean Indexing:
+    # This line uses boolean indexing to filter the DataFrame.
+    # The condition df['Mask'] returns a boolean Series where the value is True for rows where the Mask column is True and False otherwise.
+
+    # Filtering:
+    # The DataFrame is filtered to include only the rows where the Mask column is True.
+    # The result is stored in df_filtered.
+
+    df_filtered = df[df['Mask']]
+
+    # Drop the Mask Column
+    df_filtered = df_filtered.drop(columns=['Mask'])
+
+    print(f"Number of rows output df:{len(df_filtered)}")
+
+    # df_filtered.head(10)
+    return (df_filtered)
+
+
+def cleans_tire_size(df, mode, other_df=None):
+
     print(f"\nCleans_tire_size")
     print(f"Operation mode: {mode}")
 
@@ -1033,49 +929,23 @@ def cleans_tire_size(dftrain, mode, dfvalid=None):
 
     return df
 
+def preprocess_and_extract_features(dftrain, important_categ_column, learn_column, mode):
 
-def preprocess_and_extract_features(dftrain, important_categ_column, learn_column, mode="train", dfvalid=None):
-    #   mode="train" for train  OR   mode="validation"  for test and Valid
-    #   mode should be on train but here I do it for the test also .
-    #
-    ## Consider to add it on pre analysis ##
+                 ## Consider to add it on pre analysis ##
     # eda_analysis(dftrain, learn_column, important_categ_column, False)
-    ### Prepare Data  ###
+                ### Prepare Data  ###
 
+                 ### Create extra column for each value in categorial column.###
 
-    ### Create extra column for each value in categorial column.###
-    print(" Insert to preprocess_and_extract_features by mode:", mode)
-    df = pd.DataFrame()  # this will be the chained df
+    #dftrain = cleans_tire_size(dftrain, mode)   # error
+    # dftrain = remove_unconsistent_rows(dftrain, mode)  # error
 
-    # dftrain = cleans_tire_size(dftrain, mode, dfvalid)   # error
-    # dftrain = remove_unconsistent_rows(dftrain, mode, dfvalid)  # error
-
-    df = create_date_features(dftrain, mode, dfvalid)
+    dftrain = create_date_features(dftrain, mode)
     # Training -> all samples up until 2011
-    print("dftrain.shape", dftrain.shape)
-    print(f" mode:{mode}  .Now all of our data is numeric and there are no missing values, "
-          f"we should be able to build a machine"
-          " learning model.", dftrain.head().T)
-
-    df = sortdfbyyear(dftrain, mode, dfvalid)
-
-    dftrain, dfvalid = sync_withmode_after_call(df, dftrain, dfvalid, mode)
-
-    print("dftrain.shape", dftrain.shape)
-    print(f" mode:{mode}  .Now all of our data is numeric and there are no missing values, "
-          f"we should be able to build a machine"
-          " learning model.", dftrain.head().T)
-
+    dftrain.saleYear_y_y.value_counts().sort_index()
     #(df, exe_dropna=False, exe_dummies=False, exe_exclusenonnumeric=False, exe_missing=False,exe_nonnumeric_code=False)
-    df = split_and_create_columns(dftrain, 'fiProductClassDesc', mode, dfvalid)
-
-    dftrain, dfvalid = sync_withmode_after_call(df, dftrain, dfvalid, mode)
+    dftrain = split_and_create_columns(dftrain, 'fiProductClassDesc', mode)
     # exe_missing=True, exe_nonnumeric_code=True,
-
-    print("dftrain.shape", df.shape)
-    print(f" mode:{mode}  .Now all of our data is numeric and there are no missing values, "
-          f"we should be able to build a machine"
-          " learning model.", df.head().T)
 
     #sign
     #(df, exe_missing=False, exe_nonnumeric_code=False, exe_exclusenonnumeric=False,
@@ -1084,106 +954,27 @@ def preprocess_and_extract_features(dftrain, important_categ_column, learn_colum
     (exe_dropna, exe_dummies, exe_exclusenonnumeric, exe_missing, exe_nonnumeric_code,
      exe_FromfilterYear, print_info) = load_from_INI()
 
-    submodelpercat = (ini_util.get_value('PREPROCESS', 'SubModelPerCat'))
+    dftrain = prepare_data(dftrain, exe_missing, exe_nonnumeric_code, exe_exclusenonnumeric, exe_dropna,
+                           exe_dummies, exe_FromfilterYear, print_info)
 
-    df = prepare_data(dftrain, exe_missing, exe_nonnumeric_code, exe_exclusenonnumeric, exe_dropna,
-                           exe_dummies, exe_FromfilterYear, print_info, submodelpercat, mode, dfvalid)
-
-    dftrain, dfvalid = sync_withmode_after_call(df, dftrain, dfvalid, mode)
-
-    print("dftrain.shape", df.shape)
-    print(f" mode:{mode}  .Now all of our data is numeric and there are no missing values, "
-          f"we should be able to build a machine"
-          " learning model.", df.head().T)
+    print("dftrain.shape", dftrain.shape)
+    print("Now all of our data is numeric and there are no missing values, we should be able to build a machine"
+          " learning model.", dftrain.head().T)
     # Convert all columns to int64
     # df = dftrain.astype(int) error
 
 
-    if mode =="validation":
-        dfvalid = aligned_columns_asdftrainmodel(dftrain, dfvalid)
-        # Now df_aligned has the same columns and index as dftrain
-
-    print("dftrain.shape", df.shape)
-    print(f" mode:{mode}  .Now all of our data is numeric and there are no missing values, "
-          f"we should be able to build a machine"
-          " learning model.", df.head().T)
-
-
-    # here the first index  is correct and its value is:  1222837  from here to the end there is a row that
-    # changes the index.  look!!!
     ## sig: (df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat', ):
-    #dftrain = clean_sigma_log(dftrain, learn_column, important_categ_column, 3, 'sigma', important_categ_column, mode)
-    #print("dftrain.shape", dftrain.shape)
+    cleareddf = clean_sigma_log(dftrain, learn_column, important_categ_column, 3, 'sigma', important_categ_column, mode)
+    print("cleareddf.shape", cleareddf.shape)
 
-    ## eda_analysis(dftrain, learn_column, important_categ_column, True)
+    ## eda_analysis(cleareddf, learn_column, important_categ_column, True)
 
-    #print(dftrain[SubModelPerCat].unique())
+    SubModelPerCat = str(ini_util.get_value('PREPROCESS', 'SubModelPerCat'))
+    print(cleareddf[SubModelPerCat].unique())
 
-    #check if the first index is 1222837 and not  1222843
-
-    return dftrain
-
-
-def sync_withmode_after_call(df, dftrain, dfvalid, mode):
-    if mode == 'validation':
-        dfvalid = df
-        dftrain = dftrain
-    else:
-        dftrain = df
-        dfvalid = dfvalid
-    return dftrain, dfvalid
-
-
-def aligned_columns_asdftrainmodel(dftrain, dfvalid):
-    # Assuming dftrain and dfvalid are your DataFrames
-    common_columns = dftrain.columns.intersection(dfvalid.columns)
-
-    # Create a new DataFrame with common columns
-    df_aligned = dfvalid[common_columns]
-
-    # dftrain and dfvalid has different amount of rows so cant set index of one on another.
-    # Now df_aligned has the same columns and index as dftrain
-    return df_aligned
-
-
-def sortdfbyyear(dftrain, mode, df_valid):
-    df = pd.DataFrame()
-
-    if mode == 'validation':
-        df = df_valid
-    else:
-        df = dftrain
-
-    print("sortdfbyyear - saleYear_y or saleYear_y_y")
-    df.saleYear_y.value_counts().sort_index()  # check saleYear_y_y or saleYear_y
-
-    if mode == 'validation':
-        df_valid = df
-        return df_valid
-    else:
-        dftrain = df
-        return dftrain
-
-
-def extract_column(df1, column_name):
-    # Select the specified column from df1
-    extracted_series = df1.loc[:, column_name]
-
-    # Convert the Series to a DataFrame with the same index
-    extracted_df = extracted_series.to_frame()
-
-    extracted_df.columns = [column_name]
-    return extracted_df
-
-
-def concatenate_dfs(df1, extracted_df, SubModelPerCat):
-    # Convert the column to categorical
-    extracted_df[SubModelPerCat] = extracted_df[SubModelPerCat].astype('category').cat.codes + 1
-    # Merge the dataframes
-    if not (SubModelPerCat in df1.columns):
-        result_df = df1.join(extracted_df)
-        df1 = result_df
-    return df1
+    cleareddf_list = {group: sub_df for group, sub_df in cleareddf.groupby('ProductGroupDesc')}
+    return cleareddf_list
 
 
 def load_from_INI():
@@ -1199,6 +990,7 @@ def load_from_INI():
 
 
 def load_job():
+
     import joblib
     from sklearn.ensemble import RandomForestRegressor
 
@@ -1215,13 +1007,14 @@ def load_job():
     # Now you can use 'loaded_rf' for predictions
     preds = loaded_rf.predict(X_test)
 
-
 def createfeatureobefirst():
     from sklearn.ensemble import RandomForestRegressor
 
     # Assuming you have X_train and y_train
     rf = RandomForestRegressor(n_estimators=100, random_state=42)
     rf.fit(X_train, y_train)
+
+
 
     # Get feature importances
     feature_importances = rf.feature_importances_
@@ -1238,23 +1031,8 @@ def createfeatureobefirst():
     rf_reordered.fit(new_X_train, y_train)
 
 
-def combine_dfs(list_of_dfs):
-    # Concatenate DataFrames vertically (along rows)
-    combined_df = pd.concat(list_of_dfs, axis=0)
-
-    # Remove the first row (title)
-    combined_df = combined_df.iloc[1:]
-
-    # Set the index column as 'SalesID' (assuming it's the index in each small DataFrame)
-    combined_df.index.name = 'SalesID'
-
-    # Rename the 'SalePrice' column (adjust this if needed)
-    df = pd.DataFrame({'SalesID': combined_df.index.astype(int), 'SalePrice': combined_df.values})
-
-    return combined_df
-
-
 def main():
+
     """
     Model creation:
         A. Pre:
@@ -1273,6 +1051,7 @@ def main():
     #SingletonINIUtility.clear()
     firebase_init()
 
+
     # Print the full path and content
     print(f"INI File Path: {ini_file_path}")
     print("INI Content:")
@@ -1282,8 +1061,7 @@ def main():
             print(f"{key} = {value}")
 
     learn_column = ini_util.get_value('MODULE', 'learn_column')  # 'tip' #want to learn to predict
-    important_categ_column = ini_util.get_value('MODULE',
-                                                'important_categ_column')  # want to see different distribution on plot
+    important_categ_column = ini_util.get_value('MODULE', 'important_categ_column')    # want to see different distribution on plot
     num = ini_util.get_value('TRAIN', 'random_state')
     print(f"learn_column is: {learn_column}")
     print(f"important_categ_column is: {important_categ_column}")
@@ -1294,8 +1072,9 @@ def main():
 
     dftrain, dfvalid = get_df(en)
 
+
     dftrain.head()
-    dftrain = SampleFromDftrain(dftrain, False)  # remove later
+    dftrain = SampleFromDftrain(dftrain, False)# remove later
 
     # Instantiate the Random Forest regressor
     # rf = RandomForestRegressor(random_state=42)
@@ -1312,92 +1091,87 @@ def main():
     #                                    n_iter=10, cv=5, scoring='neg_mean_squared_error', random_state=42)
 
     #
+    rf_model = RandomForestRegressor(random_state =get_int_from_ini('TRAIN', 'random_state'),
+                                     max_depth =get_int_from_ini('TRAIN', 'max_depth'),
+                                     min_samples_split = get_int_from_ini('TRAIN', 'min_samples_split'),
+                                     min_samples_leaf = get_int_from_ini('TRAIN', 'min_samples_leaf'),
+                                     n_estimators= get_int_from_ini('TRAIN', 'n_estimators') ,
+                                     max_features= get_int_from_ini('TRAIN', 'max_features' ))
 
+                                    #max_features=9
+                                    # max_leaf_nodes: None (unlimited number of leaf nodes)
+                                    # min_samples_leaf: 1 (minimum number of samples required to be at a leaf node)
+                                    ## max_leaf_nodes min_samples_leaf
+                         ### EDA Exploratory  Data analysis ###
 
-    #max_features=9
-    # max_leaf_nodes: None (unlimited number of leaf nodes)
-    # min_samples_leaf: 1 (minimum number of samples required to be at a leaf node)
-    ## max_leaf_nodes min_samples_leaf
-    ### EDA Exploratory  Data analysis ###
-
-    # ************&&&&&&&&&&&&&&&&&***********************
+            # ************&&&&&&&&&&&&&&&&&***********************
     cleareddf = preprocess_and_extract_features(dftrain, important_categ_column, learn_column, "train")
 
-    cleareddf = {group: sub_df for group, sub_df in cleareddf.groupby((ini_util.get_value('PREPROCESS',
-                                                                                          'SubModelPerCat')))}
     # ************&&&&&&&&&&&&&&&&&***********************
 
     # Group by 'ProductGroupDesc' and create a dictionary of dataframes with their name of category not numeric
 
     # Initialize an empty list to store models
-    model_dictt = {}
-    modellist1 = []
+    model_list = {}
+    list1 = []
 
     for df_name, df in cleareddf.items():
         tt = df.copy()
-        len_smal_df = len(df)
-        print(f" The amount of rows is: {len_smal_df}  in small df name cat:{df_name} ")
-        print(f"look if they are ordered cat:", tt.info())
+        print(f"look here:", tt.info())
         print(f"@Cycle {df_name} for category  train creation")
         print(df_name)
-        print(f" mode: validation .  look here what is the first index {df.head().T} , category:{df_name}")
+
         df = ColumnsToKeep(df, False, learn_column)  # skip for now
 
         # perform analysis before train is built next row
         #eda_analysis(df,learn_column, 'ModelID', True)
 
-        rf_model = RandomForestRegressor(random_state=get_int_from_ini('TRAIN', 'random_state'),
-                                         max_depth=get_int_from_ini('TRAIN', 'max_depth'),
-                                         min_samples_split=get_int_from_ini('TRAIN', 'min_samples_split'),
-                                         min_samples_leaf=get_int_from_ini('TRAIN', 'min_samples_leaf'),
-                                         n_estimators=get_int_from_ini('TRAIN', 'n_estimators'),
-                                         max_features=get_int_from_ini('TRAIN', 'max_features'))
 
-        print(f" mode: validation .  look here what is the first index {df.head().T} , category:{df_name}")
         X_train, X_test, y_train, y_test = build_model(rf_model, df, learn_column, False, 1.0)
 
         y_train_pred, y_test_pred = predict_with_model(X_train, X_test, y_train, y_test, rf_model, 1.0, False,
-                                                       df_name)
+                                    df_name)
 
-        print(f" mode: validation .  look here what is the first index {df.head().T} , category:{df_name}")
-        # Save the model to a file
-        filename = str(df_name) +'random_forest_model.joblib'
-        joblib.dump(rf_model, filename)
-        model_dictt[str(df_name)] = filename
-        modellist1.append(model_dictt)
-        print(f" mode: validation .  look here what is the first index {df.head().T} , category:{df_name}")
-
+        dftrain.head()
+        key_model = str(df_name) + '_model'
+        model_list[str(df_name)] = df_name
+        model_list[key_model] = rf_model
+        rt = generate_submission_csv("valid.csv", rf_model, important_categ_column, learn_column,df_name,df)
+        list1.append(rt)
         print("--- Cycle categ  small dfs--- ")
-
-    df_validorig = empty_df = pd.DataFrame()
-    dictofmodel_ypred , df_validorig = generate_submission_csv("valid.csv", modellist1, important_categ_column, learn_column, dftrain, df_validorig)
     # _______________________________________________________________________
     ## end ##
-    # dictofmodel_ypred  . format: [ind, model_from_list, y_valid_pred]
-    #                       Key[0] = [ind=0 , model_from_list for cat=0 , y_valid_pred for cat=0]
-    #                      Key[1] = [ind=1 , model_from_list for cat=1 , y_valid_pred for cat=1]  till the 6 or more cat
-    #  exe_Missing could cause issues in the category
 
-    concatenated_y_valid_pred = pd.DataFrame()
-    df_concatenated = None
-    # Iterate through the keys
-    for key, values in dictofmodel_ypred.items():
-        y_valid_pred_series = values[2]
-        concatenated_y_valid_pred = pd.concat([concatenated_y_valid_pred, y_valid_pred_series])
-        print(len(concatenated_y_valid_pred))
-        # Assuming conflattened_y_valid_pred = concatenated_y_valid_pred['y_valid_pred'].squeeze()catenated_y_valid_pred is a DataFrame with a 'y_valid_pred' column
+    # Initialize an empty dataframe to store the combined results
+    combined_df = pd.DataFrame()
 
-    print(concatenated_y_valid_pred.info())
+    # list1 has 6 dataframes in the list
+    for dfi in list1:
+        # Concatenate the dataframes vertically (along rows)
+        combined_df = pd.concat([combined_df, dfi])
 
-    #concatenated_y_valid_pred.set_index('SalesID', inplace=True)
-    concatenated_y_valid_pred.set_index(df_validorig['SalesID'], inplace=True)
+    # Check for duplicated indices
+    if combined_df.index.duplicated().any():
+        print("Duplicated indices found in the combined DataFrame.")
+    else:
+        print("No duplicated indices in the combined DataFrame.")
 
-    # Concatenate all DataFrames vertically
+    # Calculate the average for corresponding values
+    combined_df = combined_df.groupby(combined_df.index).mean()
+
     # Assuming your DataFrame is named 'combined_df'
-    submit_csv(concatenated_y_valid_pred)  # Final File submit
+    combined_df = combined_df.rename_axis('SalesID')
+
+    # Reset the index to create a new default integer index
+    #combined_df.reset_index(drop=True, inplace=True)
 
 
+    print(combined_df)
+
+
+    submit_csv(combined_df)
     print("--- END Run Good Bye--- ")
+
 
 
 if __name__ == "__main__":
