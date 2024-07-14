@@ -374,8 +374,9 @@ def prepare_data(dftrain, exe_missing=False, exe_nonnumeric_code=False, exe_excl
     non_numeric_columns = df.select_dtypes(exclude='number').columns
     df[non_numeric_columns] = df[non_numeric_columns].apply(lambda x: x.str.lower().str.strip())
 
+    submodelpercat= ini_util.get_value('PREPROCESS', 'SubModelPerCat')
     df_orig = df.copy()
-    proddef = extract_column(df_orig, 'ProductGroupDesc')  # consider to remove - fix the bug check later.
+    proddef = extract_column(df_orig, submodelpercat)  # consider to remove - fix the bug check later.
     print(df_orig.head().T)
 
     if exe_FromfilterYear > 0:  #& mode != "validation"
@@ -474,19 +475,23 @@ def handle_missing_values(df, mode="validation", df_other=None, action='impute')
         # df is df_valid in mode validation and otherwise df is dftrain.
         df_imputed_numeric = pd.DataFrame(imputer.fit_transform(df_other[numeric_cols]), columns=numeric_cols)
 
+        SubModelPerNonCat = (ini_util.get_value('PREPROCESS', 'SubModelPerNonCat'))
         # Calculate mean for each numeric column (excluding 'ModelID')
-        group_means = df_imputed_numeric.drop(columns=['ModelID']).mean()
+        group_means = df_imputed_numeric.drop(columns=[SubModelPerNonCat]).mean()
 
         # Impute missing numeric values using group-wise means
         for col in numeric_cols:
-            if col != 'ModelID':  # Exclude 'ModelID' itself
+            if col != SubModelPerNonCat:  # Exclude 'ModelID' itself
                 df_imputed_numeric.loc[df_imputed_numeric[col].isna(), col] = df_imputed_numeric.loc[
-                    df_imputed_numeric[col].isna(), 'ModelID'].map(group_means[col])
+                    df_imputed_numeric[col].isna(), SubModelPerNonCat].map(group_means[col])
 
+        # @GYY
+
+        submodelpercat = (ini_util.get_value('PREPROCESS', 'SubModelPerCat'))
         # Impute categorical columns with most frequent value based on 'ProductGroupDesc'
         for col in categorical_cols:
-            if col != 'ProductGroupDesc':  # Exclude 'ProductGroupDesc' itself
-                most_frequent_value = df_other.groupby('ProductGroupDesc')[col].value_counts().idxmax()
+            if col != submodelpercat:  # Exclude 'ProductGroupDesc' itself
+                most_frequent_value = df_other.groupby(submodelpercat)[col].value_counts().idxmax()
                 df.loc[:, col] = most_frequent_value[1]  #  Assign directly to the column
         # Combine the imputed numeric and categorical columns
         df_imputed = pd.concat([df_imputed_numeric, df[categorical_cols]], axis=1)
@@ -596,7 +601,8 @@ def ColumnsToKeep(X, skip=True, learn_column=None):
 
     # Assuming X is your DataFrame
     columns_to_keep1 = ['SalesID', 'YearMade', 'range_min', 'ModelID', 'HandNum', 'saleYear_y', 'saleMonth', 'saleDay',
-                        'saleDayofweek', 'saleDayofyear', 'ProductGroupDesc']
+                        'saleDayofweek', 'saleDayofyear', 'ProductGroupDesc', 'InteractionFeature',
+                        'Decade']
     columns_to_keep2 = ['SalesID', 'YearMade', 'range_min', 'ProductGroupDesc', 'HandNum', 'saleYear_y', 'saleMonth',
                         'saleDay',
                         'saleDayofweek', 'saleDayofyear', 'ModelID',
@@ -727,9 +733,9 @@ def split_and_create_columns(dftrain, columntoextract='fiProductClassDesc', mode
     # Assuming you have a DataFrame 'df' and the categorical column is 'ProductGroup'
 
     # df = target_encode_categorical(df, cat_column='ProductGroup', target_column='SalePrice')
-    # df = create_interaction_features(df)
-    # df = generate_polynomial_features(df) - failed
-    # df = bin_year_into_decades(df)  -failed
+    df = create_interaction_features(df)
+    # df = generate_polynomial_features(df)
+    df = bin_year_into_decades(df)
     # df = log_transform_machine_hours(df)
 
     if mode == 'validation':
@@ -747,7 +753,7 @@ def target_encode_categorical(df, cat_column, target_column):
 
 
 def create_interaction_features(df):
-    'capture the interaction between the year of manufacture and the minimum range.'
+    #capture the interaction between the year of manufacture and the minimum range.'
     # Example: Multiply 'Feature1' and 'Feature2' to create a new interaction feature
     df['InteractionFeature'] = df['YearMade'] * df['range_min']
     return df
