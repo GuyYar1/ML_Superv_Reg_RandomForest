@@ -1,3 +1,5 @@
+                      ***ML -SUPER REGRESSOR - RANDOM FOREST***
+
 1.The project is a way to conduct an automation framework.
 2.The data exploration -EDA should be done manualy by data message.
 3.I develop an automation that perform the Random Forest ML regressor. the framework expose some parameters on INI file and some tuning parameters that came from Data eng. in the level of the drievr.
