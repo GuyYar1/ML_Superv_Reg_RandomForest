@@ -671,8 +671,7 @@ def ColumnsToKeep(X, skip=True, learn_column=None):
     columns_to_keep = columns_to_keep4
 
 
-    # Drop original saledate
-    X.drop('SalesID', axis=1, inplace=True)
+    X.set_index('SalesID', inplace=True)
 
     # create new : ProductSize_is_missing , Coupler_System_is_missing , fiModelDescriptor_is_missing
     #, 'InteractionFeature', 'Decade', 'LogMachineHours']
@@ -971,12 +970,19 @@ def generate_submission_csv(csv_file_path, modellist1, important_categ_column, l
 
         df_valid = ColumnsToKeep(df_from_dict, False)
         # Extract relevant features
-        X_valid = df_valid.set_index('SalesID')
-        X_valid = df_valid
+        # Set 'SalesID' as index in df_valid if it exists
+        if 'SalesID' in df_valid.columns:
+            X_valid = df_valid.set_index('SalesID')
+        else:
+            # Handle the case where 'SalesID' is not in df_valid.columns
+            raise KeyError("'SalesID' column not found in df_valid")
+
         # Check the shape of df_valid
         print(f"Shape of df_valid: {df_valid.shape}")
+
         # Check the shape of X_valid
         print(f"Shape of X_valid: {X_valid.shape}")
+
         file_path_jobmodel = model_from_list[str(ind)]
         # key_model_path
 
