@@ -1,4 +1,21 @@
-1. Currently not fully supported. need to add the logic of column eng and RMSE and stack of hyper parameters.  config file is ready to use, but not fully ready with Hyper param.
+1.The project is a way to conduct an automation framework.
+2.The data exploration -EDA should be done manualy by data message.
+3.I develop an automation that perform the Random Forest ML regressor. the framework expose some parameters on INI file and some tuning parameters that came from Data eng. in the level of the drievr.
+4.I would like to do refactor on another branch that took the OOP approach , this branch is POC.
+5.User config hyper params by INI file and run the test. results and mid results are printed in the console.
+6.The logic is to devide the data to groups and examine the STD of the vartaiables.
+7.in such case i develop a mechnisim that run on a small data set and trained a model that save into a job that later on loaded to the program. there was an issue to bubble the reference to other areas  due to some issue.
+8.The job let the user start from the midddle or ssave results and continue to train the model when there is drift or the model is with high RMSE.
+9.I use Fire base that wrote all the data on the cloud and let us examine which settable are most important among other teams.
+10. I took the entire ML -EDA content  that was learned and develop it and explore other methods that are working on the production.
+11. the semantic that data  is trained data and when we use test and data we should look on the trained data and decide how to fill or handle the test \valid data.
+12. model comes from traing and the trainning determind how the model knew the world of the data frame and feature. so data should be simmilar to the trained data.
+13. in production we will have sample or few data to predict so we must trained and allow the model learned well and let him realy learn. RMSE Train~RMSE Test. 
+14. There is no RMSE of VALID due to that valid  is not known so therere is no known value to calculate the RMSE.
+
+
+Details:
+config file is ready to use, but not fully ready with Hyper param.
 Instead of using git action i will use a database: Firebase Realtime Database: A NoSQL cloud database that stores and syncs data in real-time across all clients.
 please 
 
