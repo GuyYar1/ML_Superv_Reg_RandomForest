@@ -121,6 +121,13 @@ def train(model, X, y, log=True):
         model.fit(X_train, y_train_log)
         print(" End model.fit ")
 
+<<<<<<< Updated upstream
+=======
+    # @4@
+    #  train the model
+    model.fit(X_train, y_train)
+    print(" End model.fit ")
+>>>>>>> Stashed changes
     # Get the best hyperparameters
     # best_params = model.best_params_
     # print("Best hyperparameters:", best_params)
@@ -212,19 +219,22 @@ def predict_y(model, X_train, X_test, y_train, y_test, pca, ver=1.0, subModel=1,
         "max_features": float(get_int_from_ini('TRAIN', 'max_features'))
     }
 
-    # ref = create_firebase_admin()
-    # #clearfromdb(ref, ['-O1CamdoXgL3sG8aOW5G', 'O1CamszdCzx6mrlEkAu', '-O1CcvUk3rZD0iYCO76-','-O1CdFe49Ye4QqY9zW3J'])
-    #
-    # write_and_get_db(ref, dict_to_db)
-    # json_firbase = ref.get()
-    # json_firbase1 = pd.DataFrame(json_firbase['messages']).transpose()
-    # print(json_firbase1)
+    Send_Message(dict_to_db)
 
     # plt.plot(xx, xx, 'r--')
     # plt.xlabel('actual')
     # plt.ylabel('predicted')
 
     return y_train_pred, y_test_pred
+
+
+def Send_Message(dict_to_db):
+    ref = create_firebase_admin()
+    # clearfromdb(ref, ['-O1CamdoXgL3sG8aOW5G', 'O1CamszdCzx6mrlEkAu', '-O1CcvUk3rZD0iYCO76-','-O1CdFe49Ye4QqY9zW3J'])
+    write_and_get_db(ref, dict_to_db)
+    json_firbase = ref.get()
+    json_firbase1 = pd.DataFrame(json_firbase['messages']).transpose()
+    print(json_firbase1)
 
 
 def create_firebase_admin():
@@ -436,7 +446,7 @@ def prepare_data(dftrain, exe_missing=False, exe_nonnumeric_code=False, exe_excl
     if exe_missing:
         print("exe_missing")
         # this logic can enters 0 on row for the category what means that it will fuck the data.
-        df = handle_missing_values(df, mode, df_other, action='impute')  # it was IMPUTE and works but still
+        df = handle_missing_values(df, mode, df_other, action='missing_category')  # it was IMPUTE and works but still
         if print_info:
             print("# Check to see how many examples were missing in `auctioneerID` column")
             print(df.value_counts())
@@ -481,7 +491,7 @@ def prepare_data(dftrain, exe_missing=False, exe_nonnumeric_code=False, exe_excl
     return df
 
 
-def handle_missing_values(df, mode="validation", df_other=None, action='impute'):
+def handle_missing_values(df, mode="validation", df_other=None, action='missing_category'):
     """
     Handles missing values (NaNs) in a DataFrame.
 
@@ -555,7 +565,7 @@ def handle_missing_values(df, mode="validation", df_other=None, action='impute')
     return df_imputed
 
 
-def clean_sigma_log(df, learn_column, clearedcolumn, cnt_std=3, method='sigma', column_with_long_tail='carat',
+def clean_sigma_log(df, learn_column, clearedcolumn, cnt_std=0.5, method='sigma', column_with_long_tail='carat',
                     mode="Validation"):
     """
       gENERAL TO BOTH : df, learn_column , method
@@ -644,12 +654,18 @@ def ColumnsToKeep(X, skip=True, learn_column=None):
     print("column to Keep")
     if skip:
         return X
+<<<<<<< Updated upstream
 
 
     # Assuming X is your DataFrame
     columns_to_keep1 = ['SalesID', 'YearMade', 'range_min', 'ModelID', 'HandNum', 'saleYear_y', 'saleMonth', 'saleDay',
                         'ProductGroupDesc', 'InteractionFeature',
                         'Decade', 'HandNum']
+=======
+    #@7
+    # Assuming X is your DataFrame
+    columns_to_keep1 = ['SalesID', 'ModelID', 'saleYear_y', 'range_min', 'YearMade' ,  'ProductGroupDesc']
+>>>>>>> Stashed changes
     columns_to_keep2 = ['SalesID', 'YearMade', 'range_min', 'ProductGroupDesc', 'HandNum', 'saleYear_y', 'saleMonth',
                         'saleDay',
                         'saleDayofweek', 'saleDayofyear', 'ModelID',
@@ -738,7 +754,6 @@ def clearfromdb(iref, keys):
     for key in keys:
         iref.child('messages').child(key).delete()
 
-
 def parse_product_string(product_series):
     """
     Parses a product series where each element is a string.
@@ -760,7 +775,6 @@ def parse_product_string(product_series):
     unit = range_max_help.str[1]
     return Prod_type, range_min, range_max, unit
 
-
 def add_additional_columns(df, Prod_type, range_min, range_max, unit):
     """
     Adds 'Prod_type', 'range_min', 'range_max', and 'unit' columns to the DataFrame.
@@ -779,7 +793,7 @@ def add_additional_columns(df, Prod_type, range_min, range_max, unit):
     df['unit'] = unit
     return df
 
-
+#@7
 def split_and_create_columns(dftrain, columntoextract='fiProductClassDesc', mode="validation", df_valid=None):
     df = pd.DataFrame()
 
@@ -805,14 +819,10 @@ def split_and_create_columns(dftrain, columntoextract='fiProductClassDesc', mode
     else:
         dftrain = df
         return dftrain
-
-
 def target_encode_categorical(df, cat_column, target_column):
     target_means = df.groupby(cat_column)[target_column].mean()
     df[f'{cat_column}_encoded'] = df[cat_column].map(target_means)
     return df
-
-
 def create_interaction_features(df):
     #capture the interaction between the year of manufacture and the minimum range.'
     # Example: Multiply 'Feature1' and 'Feature2' to create a new interaction feature
@@ -820,22 +830,21 @@ def create_interaction_features(df):
     df['usagelifetime'] = df['YearMade'] * df['MachineHoursCurrentMeter']
 
     return df
-
-
 def generate_polynomial_features(df, degree=2):
     poly = PolynomialFeatures(degree=degree, include_bias=False)
     poly_features = poly.fit_transform(df[['YearMade', 'range_min']])
     poly_df = pd.DataFrame(poly_features, columns=poly.get_feature_names(['YearMade', 'range_min']))
     df = pd.concat([df, poly_df], axis=1)
     return df
-
-
 def bin_year_into_decades(df):
     bins = [1980, 1990, 2000, 2010, 2020]  # Adjust the bins as needed
     labels = ['1980s', '1990s', '2000s', '2010s']
     df['Decade'] = pd.cut(df['YearMade'], bins=bins, labels=labels)
     return df
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 def log_transform_machine_hours(df):
     """
     Apply logarithmic transformation to 'MachineHoursCurrentMeter'.
@@ -848,6 +857,7 @@ def log_transform_machine_hours(df):
     """
     df['LogMachineHours'] = np.log1p(df['MachineHoursCurrentMeter'])
     return df
+<<<<<<< Updated upstream
 
 def unlog_transform_machine_hours(array):
     """
@@ -889,6 +899,8 @@ def rmsle(y_true, y_pred):
  mean_squared_log_error = np.mean(squared_log_error)
  return np.sqrt(mean_squared_log_error)
 
+=======
+>>>>>>> Stashed changes
 def handnum_feature(df):
  # Assuming 'df' is your DataFrame and 'Sale_Date' is a datetime column
  # Convert 'Sale_Date' to datetime if it's not already in that format
@@ -901,10 +913,15 @@ def handnum_feature(df):
  df = pd.merge(df, hand_num_df, on='MachineID', how='left')
  df.rename(columns={'Sale_Date_y': 'HandNum'}, inplace=True)
 
+<<<<<<< Updated upstream
  # Display the resulting DataFrame
  return df
 
 
+=======
+    # Display the resulting DataFrame
+    return df
+>>>>>>> Stashed changes
 def fiproduct_split_submodels(columntoextract, df):
  # Assuming your original column name is 'fiProductClassDesc'
  # Convert 'fiProductClassDesc' to string type if it's not
@@ -941,24 +958,29 @@ def generate_submission_csv(csv_file_path, modellist1, important_categ_column, l
     Returns:
     None (Creates a CSV file with the submission data).
     """
+<<<<<<< Updated upstream
+=======
+
+    #@5@
+>>>>>>> Stashed changes
     # Handle the same way as you handled the train CSV data - cleaning, filling, etc.
     dftrain, dfvalid = preprocess_and_extract_features(dftrain, important_categ_column, learn_column, "validation", df_validorig)
     # got dictionary  with small DF
+    #@9 create sub models
     df_valid = {group: sub_df for group, sub_df in dfvalid.groupby((ini_util.get_value('PREPROCESS',
+<<<<<<< Updated upstream
                                                                                 'SubModelPerCat')))}
+=======
+                                                                                     'SubModelPerCat')))}
+>>>>>>> Stashed changes
     df_dict = df_valid.copy()
-
-    # # reverse
-    # df_valid = {k: [v] for k, v in df_valid.items()}
-    # df_valid = pd.DataFrame.from_dict(df_valid)
-    # group_df = df_valid.groupby(ini_util.get_value('PREPROCESS', 'SubModelPerCat'))
-    # df_reversed = group_df.apply(lambda x: x.reset_index(drop=True))
-
+    comment()
     ind = 1
     counter_total_dfs_valid = 0
-
     y_valid_pred_dict = {}
 
+
+    #@9
     for model_from_list, df_from_dict in zip(modellist1, df_dict.values()):
         print(f"List item: {model_from_list}, Dictionary item: {df_from_dict}")
         print("the assumption that first model is for cat i and df_dict is for cat i ")
@@ -984,9 +1006,15 @@ def generate_submission_csv(csv_file_path, modellist1, important_categ_column, l
         print(f"Shape of X_valid: {X_valid.shape}")
 
         file_path_jobmodel = model_from_list[str(ind)]
+<<<<<<< Updated upstream
         # key_model_path
 
         y_valid_pred = predict_valid(X_valid, df_valid, file_path_jobmodel, Logen)
+=======
+
+        ##@6@ predict valid
+        y_valid_pred = predict_valid(X_valid, df_valid, file_path_jobmodel)
+>>>>>>> Stashed changes
         submit_csv(y_valid_pred)
         print(f"counter_total_dfs_valid is {counter_total_dfs_valid} should be 11574")
         listitem = [ind, file_path_jobmodel, y_valid_pred]
@@ -1002,6 +1030,15 @@ def generate_submission_csv(csv_file_path, modellist1, important_categ_column, l
     #rmse_pandas = ((X_valid[''] - X_valid['x']) ** 2).mean() ** 0.5
 
 
+def comment():
+    pass
+    # # reverse
+    # df_valid = {k: [v] for k, v in df_valid.items()}
+    # df_valid = pd.DataFrame.from_dict(df_valid)
+    # group_df = df_valid.groupby(ini_util.get_value('PREPROCESS', 'SubModelPerCat'))
+    # df_reversed = group_df.apply(lambda x: x.reset_index(drop=True))
+
+
 def submit_csv(y_valid_pred):
     # Create a submission CSV file
     submission_filename = f'submission_{datetime.now().isoformat()}.csv'
@@ -1010,6 +1047,7 @@ def submit_csv(y_valid_pred):
     print(f"Submission CSV file saved as '{submission_filename}'")
 
 
+<<<<<<< Updated upstream
 # def predict_valid(X_valid, df_valid, model, logen):
 #
 #     # model is the path to the job saved before when it was train off
@@ -1043,6 +1081,14 @@ def predict_valid(X_valid, df_valid, model, logen):
 
 
     # Make predictions
+=======
+def predict_valid(X_valid, df_valid, model):
+    #@8
+    # model is the path to the job saved before when it was train off
+    # Later, load the model from the file
+    loaded_rf = joblib.load(model)
+    # Now you can use 'loaded_rf' for predictions
+>>>>>>> Stashed changes
     y_valid_pred = loaded_rf.predict(X_valid)
 
     # Apply unlogging if necessary
@@ -1417,6 +1463,7 @@ def combine_dfs(list_of_dfs):
 
 def main():
     """
+    #@1@
     Model creation:
         A. Pre:
             1. feature eng. create columns ,exe_missing, exe_nonnumeric_code,  exe_exclusenonnumeric, exe_dropna, exe_dummies,
@@ -1458,42 +1505,21 @@ def main():
     dftrain.head()
     dftrain = SampleFromDftrain(dftrain, False)  # remove later
 
-    # Instantiate the Random Forest regressor
-    # rf = RandomForestRegressor(random_state=42)
+    RandomizeSearchCV()
 
-    # # Define hyperparameter distributions
-    # param_dist = {
-    #     'n_estimators': randint(50, 200),  # Randomly sample n_estimators
-    #     'max_depth': randint(5, 20),  # Randomly sample max_depth
-    #     'min_samples_split': randint(2, 20)  # Randomly sample min_samples_split
-    # }
-    #
-    # # Instantiate Randomized Search
-    # rf_model = RandomizedSearchCV(estimator=rf, param_distributions=param_dist,
-    #                                    n_iter=10, cv=5, scoring='neg_mean_squared_error', random_state=42)
-
-    #
-
-
-    #max_features=9
-    # max_leaf_nodes: None (unlimited number of leaf nodes)
-    # min_samples_leaf: 1 (minimum number of samples required to be at a leaf node)
-    ## max_leaf_nodes min_samples_leaf
     ### EDA Exploratory  Data analysis ###
 
     # ************&&&&&&&&&&&&&&&&&***********************
     cleareddf, dfvalid = preprocess_and_extract_features(dftrain, important_categ_column, learn_column, "train")
-
     cleareddf = {group: sub_df for group, sub_df in cleareddf.groupby((ini_util.get_value('PREPROCESS',
-                                                                                          'SubModelPerCat')))}
-    # ************&&&&&&&&&&&&&&&&&***********************
-
+                                                                                       'SubModelPerCat')))}
     # Group by 'ProductGroupDesc' and create a dictionary of dataframes with their name of category not numeric
-
     # Initialize an empty list to store models
     model_dictt = {}
     modellist1 = []
 
+   #@2@
+   # Create small DF for  common category create
     for df_name, df in cleareddf.items():
         tt = df.copy()
         len_smal_df = len(df)
@@ -1505,7 +1531,7 @@ def main():
         df = ColumnsToKeep(df, False, learn_column)  # skip for now
 
         # perform analysis before train is built next row
-        #eda_analysis(df,learn_column, 'ModelID', True)
+        eda_analysis(df,learn_column, 'ModelID', True)
 
         Logen = get_bool_from_ini('PREPROCESS', 'Logen')
 
@@ -1522,6 +1548,7 @@ def main():
         y_train_pred, y_test_pred = predict_with_model(X_train, X_test, y_train, y_test, rf_model, 1.0, False,
                                                        df_name, Logen)
 
+        #@3@ save sub model
         print(f" mode: validation .  look here what is the first index {df.head().T} , category:{df_name}")
         # Save the model to a file
         df_name = str(df_name)  # Replace with your actual DataFrame name or identifier
@@ -1536,6 +1563,7 @@ def main():
 
     df_validorig = empty_df = pd.DataFrame()
 
+
     # Load the CSV file
     print("generate_submission_csv")
     project_root1 = r"C:\Users\DELL\Documents\GitHub\ML_Superv_Reg_RandomForest"
@@ -1547,23 +1575,18 @@ def main():
     dictofmodel_ypred , df_validorig = generate_submission_csv("valid.csv", modellist1,
                         important_categ_column, learn_column, dftrain, df_validorig, Logen)
     # _______________________________________________________________________
-    ## end ##
-    # dictofmodel_ypred  . format: [ind, model_from_list, y_valid_pred]
-    #                       Key[0] = [ind=0 , model_from_list for cat=0 , y_valid_pred for cat=0]
-    #                      Key[1] = [ind=1 , model_from_list for cat=1 , y_valid_pred for cat=1]  till the 6 or more cat
-    #  exe_Missing could cause issues in the category
+    Comments()
 
     concatenated_y_valid_pred = pd.DataFrame()
     df_concatenated = None
     # Iterate through the keys
     for key, values in dictofmodel_ypred.items():
         y_valid_pred_series = values[2]
+
         concatenated_y_valid_pred = pd.concat([concatenated_y_valid_pred, y_valid_pred_series])
         print(len(concatenated_y_valid_pred))
         # Assuming conflattened_y_valid_pred = concatenated_y_valid_pred['y_valid_pred'].squeeze()catenated_y_valid_pred is a DataFrame with a 'y_valid_pred' column
-
     print(concatenated_y_valid_pred.info())
-
     # Rename the current index to 'SalesID'
     concatenated_y_valid_pred.index.name = 'SalesID'
 
@@ -1577,6 +1600,7 @@ def main():
     # Reset index to make 'SalesID' a regular column
    # concatenated_y_valid_pred = concatenated_y_valid_pred.reset_index()
 
+    #@10
     # Concatenate all DataFrames vertically
     # Assuming your DataFrame is named 'combined_df'
     submit_csv(concatenated_y_valid_pred)  # Final File submit
@@ -1584,6 +1608,35 @@ def main():
 
     print("--- END Run Good Bye--- ")
 
+
+def Comments():
+    pass
+    ## end ##
+    # dictofmodel_ypred  . format: [ind, model_from_list, y_valid_pred]
+    #                       Key[0] = [ind=0 , model_from_list for cat=0 , y_valid_pred for cat=0]
+    #                      Key[1] = [ind=1 , model_from_list for cat=1 , y_valid_pred for cat=1]  till the 6 or more cat
+    #  exe_Missing could cause issues in the category
+
+
+def RandomizeSearchCV():
+    pass
+    # Instantiate the Random Forest regressor
+    # rf = RandomForestRegressor(random_state=42)
+    # # Define hyperparameter distributions
+    # param_dist = {
+    #     'n_estimators': randint(50, 200),  # Randomly sample n_estimators
+    #     'max_depth': randint(5, 20),  # Randomly sample max_depth
+    #     'min_samples_split': randint(2, 20)  # Randomly sample min_samples_split
+    # }
+    #
+    # # Instantiate Randomized Search
+    # rf_model = RandomizedSearchCV(estimator=rf, param_distributions=param_dist,
+    #                                    n_iter=10, cv=5, scoring='neg_mean_squared_error', random_state=42)
+    #
+    #max_features=9
+    # max_leaf_nodes: None (unlimited number of leaf nodes)
+    # min_samples_leaf: 1 (minimum number of samples required to be at a leaf node)
+    ## max_leaf_nodes min_samples_leaf
 
 if __name__ == "__main__":
     # Adjust the path based on your project location
