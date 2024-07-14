@@ -223,10 +223,10 @@ def model_summary(pca, y_test, y_test_pred, y_train, y_train_pred, subModel):
     print("RMSE/STD: focuses on prediction accuracy, while STD describes data variability.")
     print("RMSE: Visualizing learning curves or comparing RMSE across different models can provide insights")
     print("________________________________")
-    print("scatterplot")
-    plt.figure(figsize=(8, 6))
-    print("-------------scatterplot--------> x=y_test, y=y_test_pred --")
-    sns.scatterplot(x=y_test, y=y_test_pred)
+    # print("scatterplot")
+    # plt.figure(figsize=(8, 6))
+    # print("-------------scatterplot--------> x=y_test, y=y_test_pred --")
+    # sns.scatterplot(x=y_test, y=y_test_pred)
     xx = np.linspace(y_test.min(), y_test.max(), 100)
     return a, b, c, d, e, f, xx
 
@@ -422,7 +422,7 @@ def prepare_data(dftrain, exe_missing=False, exe_nonnumeric_code=False, exe_excl
             print("After excluding non-numeric columns:")
             print(df.value_counts())
 
-    if exe_dropna:
+    if exe_dropna & (mode != "validation"):
         print("exe_dropna")
         df = df.dropna()  # Remove rows with missing values
         if print_info:
@@ -825,21 +825,20 @@ def generate_submission_csv(csv_file_path, modellist1, important_categ_column, l
     Returns:
         None (Creates a CSV file with the submission data).
     """
-    # Load the CSV file
-    print("generate_submission_csv")
-    project_root1 = r"C:\Users\DELL\Documents\GitHub\ML_Superv_Reg_RandomForest"
-    valid_file_path1 = os.path.join(project_root1, csv_file_path)
-    df_valid = pd.read_csv(valid_file_path1)  # 11574
-    df_validorig = df_valid.copy()
+
 
     # Handle the same way as you handled the train CSV data - cleaning, filling, etc.
-    df_valid = preprocess_and_extract_features(dftrain, important_categ_column, learn_column, "validation", df_valid)
+    dftrain, dfvalid = preprocess_and_extract_features(dftrain, important_categ_column, learn_column, "validation", df_validorig)
     # got dictionary  with small DF
-    df_valid = {group: sub_df for group, sub_df in df_valid.groupby((ini_util.get_value('PREPROCESS',
+    df_valid = {group: sub_df for group, sub_df in dfvalid.groupby((ini_util.get_value('PREPROCESS',
                                                                                         'SubModelPerCat')))}
     df_dict = df_valid.copy()
 
-
+    # # reverse
+    # df_valid = {k: [v] for k, v in df_valid.items()}
+    # df_valid = pd.DataFrame.from_dict(df_valid)
+    # group_df = df_valid.groupby(ini_util.get_value('PREPROCESS', 'SubModelPerCat'))
+    # df_reversed = group_df.apply(lambda x: x.reset_index(drop=True))
 
     ind = 1
     counter_total_dfs_valid = 0
@@ -871,8 +870,10 @@ def generate_submission_csv(csv_file_path, modellist1, important_categ_column, l
         listitem = [ind, file_path_jobmodel, y_valid_pred]
         y_valid_pred_dict[ind] = listitem
         ind += 1
+        print(len(df_validorig))
+        print(len(y_valid_pred_dict))
+    return y_valid_pred_dict, df_validorig   # check if  df_validorig or  df_valid
 
-    return y_valid_pred_dict, df_validorig
 
     # here there is no RMSE. due to that this is the real time data.
     # but i can compare to the test value.
@@ -1121,7 +1122,9 @@ def preprocess_and_extract_features(dftrain, important_categ_column, learn_colum
 
     #check if the first index is 1222837 and not  1222843
 
-    return dftrain
+
+
+    return dftrain, dfvalid
 
 
 def sync_withmode_after_call(df, dftrain, dfvalid, mode):
@@ -1321,7 +1324,7 @@ def main():
     ### EDA Exploratory  Data analysis ###
 
     # ************&&&&&&&&&&&&&&&&&***********************
-    cleareddf = preprocess_and_extract_features(dftrain, important_categ_column, learn_column, "train")
+    cleareddf, dfvalid = preprocess_and_extract_features(dftrain, important_categ_column, learn_column, "train")
 
     cleareddf = {group: sub_df for group, sub_df in cleareddf.groupby((ini_util.get_value('PREPROCESS',
                                                                                           'SubModelPerCat')))}
@@ -1370,6 +1373,15 @@ def main():
         print("--- Cycle categ  small dfs--- ")
 
     df_validorig = empty_df = pd.DataFrame()
+
+    # Load the CSV file
+    print("generate_submission_csv")
+    project_root1 = r"C:\Users\DELL\Documents\GitHub\ML_Superv_Reg_RandomForest"
+    valid_file_path1 = os.path.join(project_root1, "valid.csv")
+    df_valid = pd.read_csv(valid_file_path1)  # 11574
+    df_validorig = df_valid.copy()
+
+     #y_valid_pred_dict, df_validorig
     dictofmodel_ypred , df_validorig = generate_submission_csv("valid.csv", modellist1, important_categ_column, learn_column, dftrain, df_validorig)
     # _______________________________________________________________________
     ## end ##
@@ -1389,8 +1401,18 @@ def main():
 
     print(concatenated_y_valid_pred.info())
 
-    #concatenated_y_valid_pred.set_index('SalesID', inplace=True)
-    concatenated_y_valid_pred.set_index(df_validorig['SalesID'], inplace=True)
+    # Rename the current index to 'SalesID'
+    concatenated_y_valid_pred.index.name = 'SalesID'
+
+    if len(concatenated_y_valid_pred.columns) > 1:
+        concatenated_y_valid_pred = concatenated_y_valid_pred.rename(
+            columns={concatenated_y_valid_pred.columns[1]: 'SalePrice'})
+    else:
+        # Handle the case where the second column is missing
+        print("Warning: DataFrame does not have a second column to rename.")
+        # You might want to add logic here to handle this situation
+    # Reset index to make 'SalesID' a regular column
+   # concatenated_y_valid_pred = concatenated_y_valid_pred.reset_index()
 
     # Concatenate all DataFrames vertically
     # Assuming your DataFrame is named 'combined_df'
