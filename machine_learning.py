@@ -28,7 +28,7 @@ from firebase_admin import db
 from firebase_admin import credentials
 from sklearn.model_selection import RandomizedSearchCV
 from scipy.stats import randint
-from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import PolynomialFeatures, FunctionTransformer
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 
@@ -96,22 +96,35 @@ def initialize_ini():
     return ini_util
 
 
-def train(model, X, y):
+def train(model, X, y, log=True):
     # Split the data into training and testing sets
     print("_____CREATE  train_test_split USING TEST SIZE, with random tree state")
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    # Train the model on the training set
-    print("_______Perform fit to learn from X train and y train______")
-    print(X_train)
-    print(y_train)
+    #   # this is what we want to learn to predict
+    # X_train_init, X_test_init, y_train_log, y_test_log = train_test_split(X, y_log, test_size=0.2, random_state=42)
 
-    print(" start model.fit ")
+    if log:
+        # ensure that the log in keep is in the column - Log features like KMPer Hour
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        print("_______Perform fit to learn from X train and y train______")
+        print(X_train)
+        print(y_train)
+        print(" start model.fit ")
+        model.fit(X_train, y_train)
+        print(" End model.fit ")
+    else:
+        print("_______Perform log fit to learn from X train and y train______")
+        X_train, X_test_init, y_train_log, y_test_log = train_test_split(X, y, test_size=0.2, random_state=42)
+        y_log = np.log(y_train_log['Sale_Price'])
+        print(X_train)
+        print(y_train_log)
+        print(" start model.fit ")
+        model.fit(X_train, y_train_log)
+        print(" End model.fit ")
 
-    model.fit(X_train, y_train)
-    print(" End model.fit ")
     # Get the best hyperparameters
     # best_params = model.best_params_
     # print("Best hyperparameters:", best_params)
+
 
     # Evaluate the model on the testing set
     # Access model attributes
@@ -151,12 +164,34 @@ def RMSE(y_pred, y_true):
     return ((y_pred - y_true) ** 2).mean() ** 0.5
 
 
-def predict_y(model, X_train, X_test, y_train, y_test, pca, ver=1.0, subModel=1):
+def rmsle(y_pred, y_true):
+    """
+    Calculate the root mean squared logarithmic error (RMSLE).
+
+    Parameters:
+    y_pred (np.array or pd.Series): Predicted values.
+    y_true (np.array or pd.Series): True values.
+
+    Returns:
+    float: The calculated RMSLE value.
+    """
+    rmsle = np.sqrt(np.mean((np.log1p(y_pred) - np.log1p(y_true)) ** 2))
+    return rmsle
+
+
+def predict_y(model, X_train, X_test, y_train, y_test, pca, ver=1.0, subModel=1, logEn=True):
     # Make predictions on the training and testing sets
+
+
     y_train_pred = model.predict(X_train)
     y_test_pred = model.predict(X_test)
+
+    if logEn:
+        y_train_pred= unlog_transform_machine_hours(y_train_pred)
+        y_test_pred = unlog_transform_machine_hours(y_test_pred)
+
     a, train_rmse, test_rmse, raw_train_std, train_pred_std, test_std, xx = model_summary(
-        pca, y_test, y_test_pred, y_train, y_train_pred, subModel)
+        pca, y_test, y_test_pred, y_train, y_train_pred, subModel, logEn)
 
     a = float((get_int_from_ini('TRAIN', 'max_depth')))
 
@@ -185,9 +220,9 @@ def predict_y(model, X_train, X_test, y_train, y_test, pca, ver=1.0, subModel=1)
     # json_firbase1 = pd.DataFrame(json_firbase['messages']).transpose()
     # print(json_firbase1)
 
-    plt.plot(xx, xx, 'r--')
-    plt.xlabel('actual')
-    plt.ylabel('predicted')
+    # plt.plot(xx, xx, 'r--')
+    # plt.xlabel('actual')
+    # plt.ylabel('predicted')
 
     return y_train_pred, y_test_pred
 
@@ -196,7 +231,7 @@ def create_firebase_admin():
     return db.reference()
 
 
-def model_summary(pca, y_test, y_test_pred, y_train, y_train_pred, subModel):
+def model_summary(pca, y_test, y_test_pred, y_train, y_train_pred, subModel, logEn):
     print("____________Learning Metric result ____________________")
     print("train data is the data that created the model.")
     print("train data is the data that i only have. test data is not static and be changed")
@@ -204,9 +239,19 @@ def model_summary(pca, y_test, y_test_pred, y_train, y_train_pred, subModel):
     print("I use the model to predict the y_train from X train. same for the X,y test.")
     print("the model should have simmilar residue\ error on prediction from test,train.")
     print(f"Look below: with {pca}")
-    a = round(y_train.mean(), 3)
-    b = round(RMSE(y_train_pred, y_train), 3)
-    c = round(RMSE(y_test_pred, y_test), 3)
+
+    # Compute mean of y_train
+    a = round(np.mean(y_train.astype(np.float64)), 3)
+
+    if logEn:
+        # Compute RMSLE for y_train_pred and y_test_pred
+        b = round(rmsle(y_train_pred.astype(np.float64), y_train.astype(np.float64)), 3)
+        c = round(rmsle(y_test_pred.astype(np.float64), y_test.astype(np.float64)), 3)
+    else:
+        # Compute RMSE for y_train_pred and y_test_pred
+        b = round(RMSE(y_train_pred.astype(np.float64), y_train.astype(np.float64)), 3)
+        c = round(RMSE(y_test_pred.astype(np.float64), y_test.astype(np.float64)), 3)
+
     d = round(y_train.std(), 3)
     e = round(y_train_pred.std(), 3)
     f = round(y_test.std(), 3)
@@ -370,9 +415,10 @@ def prepare_data(dftrain, exe_missing=False, exe_nonnumeric_code=False, exe_excl
         df = dftrain
         df_other = dftrain
 
-    # Assuming 'df' is your DataFrame
-    non_numeric_columns = df.select_dtypes(exclude='number').columns
-    df[non_numeric_columns] = df[non_numeric_columns].apply(lambda x: x.str.lower().str.strip())
+    # # Assuming 'df' is your DataFrame
+    # non_numeric_columns = df.select_dtypes(exclude='number').columns
+    # df[non_numeric_columns] = df[non_numeric_columns].apply(lambda x: x.str.lower().str.strip())
+    # issue with lower case
 
     submodelpercat= ini_util.get_value('PREPROCESS', 'SubModelPerCat')
     df_orig = df.copy()
@@ -485,7 +531,7 @@ def handle_missing_values(df, mode="validation", df_other=None, action='impute')
                 df_imputed_numeric.loc[df_imputed_numeric[col].isna(), col] = df_imputed_numeric.loc[
                     df_imputed_numeric[col].isna(), SubModelPerNonCat].map(group_means[col])
 
-        # @GYY
+
 
         submodelpercat = (ini_util.get_value('PREPROCESS', 'SubModelPerCat'))
         # Impute categorical columns with most frequent value based on 'ProductGroupDesc'
@@ -548,16 +594,16 @@ def clean_sigma_log(df, learn_column, clearedcolumn, cnt_std=3, method='sigma', 
     return df_filtered
 
 
-def build_model(rf_model, df, learn_column, pca, ver):
+def build_model(rf_model, df, learn_column, pca, ver, Logen):
     print("build_model")
     X = df.drop(columns=learn_column)  # these are our "features" that we use to predict from
     y = df[learn_column]  # this is what we want to learn to predict
 
     if pca:
-        X_train, X_test, y_train, y_test = trainr_pca(rf_model, X, y)
+        X_train, X_test, y_train, y_test = trainr_pca(rf_model, X, y, Logen)
         return X_train, X_test, y_train, y_test
     else:
-        X_train, X_test, y_train, y_test = train(rf_model, X, y)
+        X_train, X_test, y_train, y_test = train(rf_model, X, y, Logen)
         return X_train, X_test, y_train, y_test
 
 
@@ -599,10 +645,11 @@ def ColumnsToKeep(X, skip=True, learn_column=None):
     if skip:
         return X
 
+
     # Assuming X is your DataFrame
     columns_to_keep1 = ['SalesID', 'YearMade', 'range_min', 'ModelID', 'HandNum', 'saleYear_y', 'saleMonth', 'saleDay',
-                        'saleDayofweek', 'saleDayofyear', 'ProductGroupDesc', 'InteractionFeature',
-                        'Decade']
+                        'ProductGroupDesc', 'InteractionFeature',
+                        'Decade', 'HandNum']
     columns_to_keep2 = ['SalesID', 'YearMade', 'range_min', 'ProductGroupDesc', 'HandNum', 'saleYear_y', 'saleMonth',
                         'saleDay',
                         'saleDayofweek', 'saleDayofyear', 'ModelID',
@@ -612,8 +659,22 @@ def ColumnsToKeep(X, skip=True, learn_column=None):
                         'Grouser_Type', 'Backhoe_Mounting', 'Blade_Type', 'Travel_Controls',
                         'Differential_Type', 'Steering_Controls']
 
-    columns_to_keep = columns_to_keep1
+    columns_to_keep3 = ['YearMade', 'ProductSize', 'saleYear_y', 'fiSecondaryDesc', 'Enclosure', 'fiBaseModel',
+                        'fiProductClassDesc' , 'fiModelDesc', 'SalesID', 'MachineID', 'fiModelDescriptor',
+                        'saleDayofyear','Coupler_System']
 
+
+    columns_to_keep4= [ 'SalesID',  'YearMade', 'saleYear_y' ,'ModelID', 'LogMachineHours', 'saleDayofyear'
+        ,'MachineHoursCurrentMeter', 'usagelifetime']
+
+
+    columns_to_keep = columns_to_keep4
+
+
+    # Drop original saledate
+    X.drop('SalesID', axis=1, inplace=True)
+
+    # create new : ProductSize_is_missing , Coupler_System_is_missing , fiModelDescriptor_is_missing
     #, 'InteractionFeature', 'Decade', 'LogMachineHours']
 
     if not (learn_column is None):
@@ -624,11 +685,11 @@ def ColumnsToKeep(X, skip=True, learn_column=None):
     return X
 
 
-def predict_with_model(X_train, X_test, y_train, y_test, rf_model, ver, pca, subModel):
+def predict_with_model(X_train, X_test, y_train, y_test, rf_model, ver, pca, subModel, logen):
     if pca:
         pass  # TBD
     else:
-        return predict_y(rf_model, X_train, X_test, y_train, y_test, pca, ver, subModel)
+        return predict_y(rf_model, X_train, X_test, y_train, y_test, pca, ver, subModel, logen)
 
 
 def get_bool_from_ini(section, key):
@@ -736,7 +797,8 @@ def split_and_create_columns(dftrain, columntoextract='fiProductClassDesc', mode
     df = create_interaction_features(df)
     # df = generate_polynomial_features(df)
     df = bin_year_into_decades(df)
-    # df = log_transform_machine_hours(df)
+    #df = handnum_feature(df)
+    #df = log_transform_machine_hours(df)
 
     if mode == 'validation':
         df_valid = df
@@ -756,6 +818,8 @@ def create_interaction_features(df):
     #capture the interaction between the year of manufacture and the minimum range.'
     # Example: Multiply 'Feature1' and 'Feature2' to create a new interaction feature
     df['InteractionFeature'] = df['YearMade'] * df['range_min']
+    df['usagelifetime'] = df['YearMade'] * df['MachineHoursCurrentMeter']
+
     return df
 
 
@@ -773,71 +837,116 @@ def bin_year_into_decades(df):
     df['Decade'] = pd.cut(df['YearMade'], bins=bins, labels=labels)
     return df
 
-
 def log_transform_machine_hours(df):
+    """
+    Apply logarithmic transformation to 'MachineHoursCurrentMeter'.
+
+    Parameters:
+    df (pd.DataFrame): DataFrame containing 'MachineHoursCurrentMeter'.
+
+    Returns:
+    pd.DataFrame: DataFrame with the added 'LogMachineHours' column.
+    """
     df['LogMachineHours'] = np.log1p(df['MachineHoursCurrentMeter'])
     return df
 
+def unlog_transform_machine_hours(array):
+    """
+     Apply exponential transformation to reverse log transformation.
+
+     Parameters:
+     df (pd.DataFrame): DataFrame containing 'LogMachineHours'.
+
+     Returns:
+     pd.DataFrame: DataFrame with the added 'UnloggedMachineHours' column.
+     """
+    # Convert array to DataFrame if it's not already
+    if isinstance(array, np.ndarray):
+        df = pd.DataFrame(array, columns=['LogMachineHours'])
+    elif isinstance(array, pd.DataFrame):
+        df = array
+    else:
+        raise TypeError("Input should be a numpy ndarray or a pandas DataFrame")
+
+    # Check if 'LogMachineHours' exists in the DataFrame
+    if 'LogMachineHours' not in df.columns:
+        raise KeyError("'LogMachineHours' not found in the DataFrame")
+
+    # Clip values to a safe range to avoid overflow in np.expm1
+    df['LogMachineHours'] = np.clip(df['LogMachineHours'], a_min=None,
+                                    a_max=709)  # np.expm1(709) is within the safe range
+
+    # Apply the exponential transformation
+    df['UnloggedMachineHours'] = np.expm1(df['LogMachineHours'])
+    return df
+
+def rmsle(y_true, y_pred):
+
+ # Define the RMSLE function
+ assert len(y_true) == len(y_pred), "The arrays must have the same length."
+ log_true = np.log(y_true)
+ log_pred = np.log(y_pred)
+ squared_log_error = (log_true - log_pred) ** 2
+ mean_squared_log_error = np.mean(squared_log_error)
+ return np.sqrt(mean_squared_log_error)
 
 def handnum_feature(df):
-    # Assuming 'df' is your DataFrame and 'Sale_Date' is a datetime column
-    # Convert 'Sale_Date' to datetime if it's not already in that format
-    df['saleYear_y'] = pd.to_datetime(df['saleYear_y'])
+ # Assuming 'df' is your DataFrame and 'Sale_Date' is a datetime column
+ # Convert 'Sale_Date' to datetime if it's not already in that format
+ df['saleYear_y'] = pd.to_datetime(df['saleYear_y'])
 
-    # Group by 'MachineID' and count the number of unique sale dates
-    hand_num_df = df.groupby('MachineID')['saleYear_y'].nunique().reset_index()
+ # Group by 'MachineID' and count the number of unique sale dates
+ hand_num_df = df.groupby('MachineID')['saleYear_y'].nunique().reset_index()
 
-    # Merge the 'hand_num_df' back into the original DataFrame
-    df = pd.merge(df, hand_num_df, on='MachineID', how='left')
-    df.rename(columns={'Sale_Date_y': 'HandNum'}, inplace=True)
+ # Merge the 'hand_num_df' back into the original DataFrame
+ df = pd.merge(df, hand_num_df, on='MachineID', how='left')
+ df.rename(columns={'Sale_Date_y': 'HandNum'}, inplace=True)
 
-    # Display the resulting DataFrame
-    return df
+ # Display the resulting DataFrame
+ return df
 
 
 def fiproduct_split_submodels(columntoextract, df):
-    # Assuming your original column name is 'fiProductClassDesc'
-    # Convert 'fiProductClassDesc' to string type if it's not
-    df[columntoextract] = df[columntoextract].astype(str).str.strip()  # Remove any leading/trailing spaces
-    Prod_type, range_min, range_max, unit = None, None, None, None
-    Prod_type, range_min, range_max, unit = parse_product_string(df[columntoextract])
-    df = add_additional_columns(df, Prod_type, range_min, range_max, unit)
-    # Assign column names based on the number of columns
-    if Prod_type is not None and range_min is not None and range_max is not None and unit is not None:
-        print("All variables have non-None values.")
-    else:
-        print("Warning: Split did not result in 4 columns. Check the delimiter in 'fiProductClassDesc'.")
-    # Drop the original 'fiProductClassDesc' column
-    df.drop(columns=[columntoextract], inplace=True)
-    # # Concatenate the split columns back to the original DataFrame
-    # df = pd.concat([df, split_columns], axis=1)
-    return df
+ # Assuming your original column name is 'fiProductClassDesc'
+ # Convert 'fiProductClassDesc' to string type if it's not
+ df[columntoextract] = df[columntoextract].astype(str).str.strip()  # Remove any leading/trailing spaces
+ Prod_type, range_min, range_max, unit = None, None, None, None
+ Prod_type, range_min, range_max, unit = parse_product_string(df[columntoextract])
+ df = add_additional_columns(df, Prod_type, range_min, range_max, unit)
+ # Assign column names based on the number of columns
+ if Prod_type is not None and range_min is not None and range_max is not None and unit is not None:
+     print("All variables have non-None values.")
+ else:
+     print("Warning: Split did not result in 4 columns. Check the delimiter in 'fiProductClassDesc'.")
+ # Drop the original 'fiProductClassDesc' column
+ df.drop(columns=[columntoextract], inplace=True)
+ # # Concatenate the split columns back to the original DataFrame
+ # df = pd.concat([df, split_columns], axis=1)
+ return df
 
 
 def generate_submission_csv(csv_file_path, modellist1, important_categ_column, learn_column, dftrain,
-                            df_validorig):
+                         df_validorig, Logen):
     """                     ("valid.csv", list1, important_categ_column, learn_column, df_validorig)
     Generates a submission CSV file with predicted SalePrice based on the provided model.
 
     Args:
-        csv_file_path (str): Path to the input CSV file.
-        modellist1: model_list[str(df_name)] = df_name       model_list[[key_model_path] = rf_model
-        important_categ_column:
-        learn_column:
-        catgeindx:
-        dftrain:
-        df_validorig:
+    csv_file_path (str): Path to the input CSV file.
+    modellist1: model_list[str(df_name)] = df_name       model_list[[key_model_path] = rf_model
+    important_categ_column:
+    learn_column:
+    catgeindx:
+    dftrain:
+    df_validorig:
 
     Returns:
-        None (Creates a CSV file with the submission data).
+    None (Creates a CSV file with the submission data).
     """
-
-
     # Handle the same way as you handled the train CSV data - cleaning, filling, etc.
     dftrain, dfvalid = preprocess_and_extract_features(dftrain, important_categ_column, learn_column, "validation", df_validorig)
     # got dictionary  with small DF
     df_valid = {group: sub_df for group, sub_df in dfvalid.groupby((ini_util.get_value('PREPROCESS',
-                                                                                        'SubModelPerCat')))}
+                                                                                'SubModelPerCat')))}
     df_dict = df_valid.copy()
 
     # # reverse
@@ -870,7 +979,8 @@ def generate_submission_csv(csv_file_path, modellist1, important_categ_column, l
         print(f"Shape of X_valid: {X_valid.shape}")
         file_path_jobmodel = model_from_list[str(ind)]
         # key_model_path
-        y_valid_pred = predict_valid(X_valid, df_valid, file_path_jobmodel)
+
+        y_valid_pred = predict_valid(X_valid, df_valid, file_path_jobmodel, Logen)
         submit_csv(y_valid_pred)
         print(f"counter_total_dfs_valid is {counter_total_dfs_valid} should be 11574")
         listitem = [ind, file_path_jobmodel, y_valid_pred]
@@ -879,7 +989,6 @@ def generate_submission_csv(csv_file_path, modellist1, important_categ_column, l
         print(len(df_validorig))
         print(len(y_valid_pred_dict))
     return y_valid_pred_dict, df_validorig   # check if  df_validorig or  df_valid
-
 
     # here there is no RMSE. due to that this is the real time data.
     # but i can compare to the test value.
@@ -895,17 +1004,53 @@ def submit_csv(y_valid_pred):
     print(f"Submission CSV file saved as '{submission_filename}'")
 
 
-def predict_valid(X_valid, df_valid, model):
+# def predict_valid(X_valid, df_valid, model, logen):
+#
+#     # model is the path to the job saved before when it was train off
+#     # Later, load the model from the file
+#     loaded_rf = joblib.load(model)
+#     # Now you can use 'loaded_rf' for predictions
+#
+#
+#     y_valid_pred = loaded_rf.predict(X_valid)
+#     if logen:
+#         y_valid_pred= unlog_transform_machine_hours(y_valid_pred)
+#
+#     y_valid_pred = pd.Series(y_valid_pred, index=X_valid.index, name='SalePrice')
+#     y_valid_pred.index = df_valid['SalesID']
+#     return y_valid_pred
+def predict_valid(X_valid, df_valid, model, logen):
+    # Load the trained model
+    loaded_rf = joblib.load(model)  # Load your model here
 
-    # model is the path to the job saved before when it was train off
-    # Later, load the model from the file
-    loaded_rf = joblib.load(model)
-    # Now you can use 'loaded_rf' for predictions
+    # Ensure X_valid has the same columns as expected during training
+    if logen:
+        # Transform X_valid to include 'LogMachineHours' if it's not already included
+        if 'LogMachineHours' not in X_valid.columns:
+            # Handle NaN values before transformation
+            imputer = SimpleImputer(strategy='median')
+            X_valid_imputed = imputer.fit_transform(X_valid[['MachineHoursCurrentMeter']])
+
+            # Apply log transformation
+            transformer = FunctionTransformer(np.log1p, validate=True)
+            X_valid['LogMachineHours'] = transformer.transform(X_valid_imputed)
+
+
+    # Make predictions
     y_valid_pred = loaded_rf.predict(X_valid)
+
+    # Apply unlogging if necessary
+    if logen:
+        if y_valid_pred.ndim > 1:
+            y_valid_pred = unlog_transform_machine_hours(y_valid_pred.flatten())
+        else:
+            y_valid_pred = unlog_transform_machine_hours(y_valid_pred)
+
+    # Prepare the predictions DataFrame with correct index
     y_valid_pred = pd.Series(y_valid_pred, index=X_valid.index, name='SalePrice')
     y_valid_pred.index = df_valid['SalesID']
-    return y_valid_pred
 
+    return y_valid_pred
 
 def create_date_features(dftrain, mode, df_valid=None):
     df = pd.DataFrame()
@@ -1020,25 +1165,26 @@ def remove_unconsistent_rows(dftrain, mode, dfvalid=None):
 
 
 def cleans_tire_size(dftrain, mode, dfvalid=None):
-    print(f"\nCleans_tire_size")
-    print(f"Operation mode: {mode}")
+    # Step 1: Replace 'None or Unspecified' with '20.5'
+    print("\nReplacing 'None or Unspecified' with 20.5 in 'Tire_Size' column...")
+    dftrain['Tire_Size'] = dftrain['Tire_Size'].replace('None or Unspecified', '20.5')
 
-    # Step 1: Remove the double quotes from the 'Tire_Size' column
-    print("\nRemoving double quotes from 'Tire_Size' column...")
-    df['Tire_Size'] = df['Tire_Size'].str.replace('"', '', regex=False)
+    # Step 2: Remove non-numeric characters and convert to float
+    print("\nRemoving non-numeric characters and converting 'Tire_Size' column to float...")
 
-    # Step 2: Replace 'None or Unspecified' with NaN
-    print("\nReplacing 'None or Unspecified' with NaN in 'Tire_Size' column...")
-    df['Tire_Size'] = df['Tire_Size'].replace('None or Unspecified', np.nan)
+    def convert_to_float(value):
+        try:
+            # Remove non-numeric characters
+            numeric_value = ''.join(filter(lambda x: x.isdigit() or x == '.', str(value)))
+            # Convert to float
+            return float(numeric_value)
+        except ValueError:
+            # If conversion fails, return the default value 20.5
+            return 20.5
 
-    # Step 3: Convert the 'Tire_Size' column to float
-    print("\nConverting 'Tire_Size' column to float...")
-    try:
-        df['Tire_Size'] = df['Tire_Size'].astype(float)
-    except ValueError as e:
-        print(f"Error converting 'Tire_Size' to float: {e}")
+    dftrain['Tire_Size'] = dftrain['Tire_Size'].apply(convert_to_float)
 
-    return df
+    return dftrain
 
 
 def preprocess_and_extract_features(dftrain, important_categ_column, learn_column, mode="train", dfvalid=None):
@@ -1054,7 +1200,7 @@ def preprocess_and_extract_features(dftrain, important_categ_column, learn_colum
     print(" Insert to preprocess_and_extract_features by mode:", mode)
     df = pd.DataFrame()  # this will be the chained df
 
-    # dftrain = cleans_tire_size(dftrain, mode, dfvalid)   # error
+    dftrain = cleans_tire_size(dftrain, mode, dfvalid)   # error
     # dftrain = remove_unconsistent_rows(dftrain, mode, dfvalid)  # error
 
     df = create_date_features(dftrain, mode, dfvalid)
@@ -1355,6 +1501,8 @@ def main():
         # perform analysis before train is built next row
         #eda_analysis(df,learn_column, 'ModelID', True)
 
+        Logen = get_bool_from_ini('PREPROCESS', 'Logen')
+
         rf_model = RandomForestRegressor(random_state=get_int_from_ini('TRAIN', 'random_state'),
                                          max_depth=get_int_from_ini('TRAIN', 'max_depth'),
                                          min_samples_split=get_int_from_ini('TRAIN', 'min_samples_split'),
@@ -1363,14 +1511,16 @@ def main():
                                          max_features=get_int_from_ini('TRAIN', 'max_features'))
 
         print(f" mode: validation .  look here what is the first index {df.head().T} , category:{df_name}")
-        X_train, X_test, y_train, y_test = build_model(rf_model, df, learn_column, False, 1.0)
+        X_train, X_test, y_train, y_test = build_model(rf_model, df, learn_column, False, 1.0, Logen)
 
         y_train_pred, y_test_pred = predict_with_model(X_train, X_test, y_train, y_test, rf_model, 1.0, False,
-                                                       df_name)
+                                                       df_name, Logen)
 
         print(f" mode: validation .  look here what is the first index {df.head().T} , category:{df_name}")
         # Save the model to a file
-        filename = str(df_name) +'random_forest_model.joblib'
+        df_name = str(df_name)  # Replace with your actual DataFrame name or identifier
+        filename = '_random_forest_model.joblib'
+        filename = df_name + filename
         joblib.dump(rf_model, filename)
         model_dictt[str(df_name)] = filename
         modellist1.append(model_dictt)
@@ -1388,7 +1538,8 @@ def main():
     df_validorig = df_valid.copy()
 
      #y_valid_pred_dict, df_validorig
-    dictofmodel_ypred , df_validorig = generate_submission_csv("valid.csv", modellist1, important_categ_column, learn_column, dftrain, df_validorig)
+    dictofmodel_ypred , df_validorig = generate_submission_csv("valid.csv", modellist1,
+                        important_categ_column, learn_column, dftrain, df_validorig, Logen)
     # _______________________________________________________________________
     ## end ##
     # dictofmodel_ypred  . format: [ind, model_from_list, y_valid_pred]
