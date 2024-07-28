@@ -2,7 +2,8 @@
 
 1.The project is a way to conduct an automation framework with research on notebook.
 2.The data exploration and Engineering were done manualy, look please on the notebook attached: "2024-07-13  FE-10.ipynb"
-3.I develop an automation that perform the Random Forest ML regressor based on feedbacks from the manually research too. the framework expose some parameters on INI file and some tuning parameters that came from Data eng. in the level of the drievr.
+3.I develop an automation that perform the Random Forest ML regressor based on feedbacks from the manually research. the framework expose some parameters on INI file and some tuning parameters that came from Data eng. in the level of the drievr.
+4.It allows to load any X data and y target predicted and run the whole workflow of training testing and validation. There are more functional features to implement.
 
 **Explanation on the automation framework is here**:
   1.I would like to do refactor on another branch that took the OOP approach , this branch is POC.
