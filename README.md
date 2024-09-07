@@ -2,7 +2,10 @@
 
 
 This project aims to develop an automated machine learning (ML) framework using Python. The framework leverages INI files for configuration, job tasks, PKL files for data storage, and various datasets to create an automated ML workflow. The primary focus is on enhancing the automation framework to handle more advanced tasks. This framework can be referred to as an Automated Random Forest Ensemble Framework. 
-attached:  ML_Superv_Reg_RandomForest.pptx
+
+**# System Presentation **
+
+    ML_Superv_Reg_RandomForest.pptx -  attched.
 
 **# Key Components**
   
