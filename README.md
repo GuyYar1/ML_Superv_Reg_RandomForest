@@ -6,7 +6,7 @@ This project aims to develop an automated machine learning (ML) framework using 
 
 **# Key Components**
 
-   **System Presentation**
+   **System Presentation:**
 
     ML_Superv_Reg_RandomForest.pptx -  attched.
 
