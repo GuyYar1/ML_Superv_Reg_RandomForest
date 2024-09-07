@@ -39,9 +39,10 @@ attached:  ML_Superv_Reg_RandomForest.pptx
     The project incorporates ML and Exploratory Data Analysis (EDA) content, exploring methods suitable for production environments.
 **# Future Enhancements**
 
+    1. Fix Bugs (known issue)
     1.Implement more advanced functional features.
-    2.Improve the automation framework’s robustness and scalability.
-    3.Enhance the user interface for better configuration and monitoring.
+    3.Improve the automation framework’s robustness and scalability.
+    4.Enhance the user interface for better configuration and monitoring.
                
                       
                       
