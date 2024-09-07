@@ -1,3 +1,38 @@
+**Project Overview**
+This project aims to develop an automated machine learning (ML) framework using Python. The framework leverages INI files for configuration, job tasks, PKL files for data storage, and various datasets to create an automated ML workflow. The primary focus is on enhancing the automation framework to handle more advanced tasks. This framework can be referred to as an Automated Random Forest Ensemble Framework.
+
+**# Key Components**
+  **Data Exploration and Engineering:**
+        Initial data exploration and feature engineering were performed manually, as documented in the notebook “2024-07-13 FE-10.ipynb”.
+        The dataset used includes excavator data from Kaggle.
+        Automation Framework:
+        Developed an automation framework that performs Random Forest ML regression based on insights from manual research.
+        The framework exposes parameters via an INI file and includes tuning parameters derived from data engineering.
+**# Workflow:**
+      The framework allows loading any X data and y target for prediction, running the entire workflow of training, testing, and validation.
+      It supports additional functional features for enhanced automation.
+      Explanation of the Automation Framework
+**# Refactoring and OOP Approach:**
+      A new branch was created to refactor the framework using Object-Oriented Programming (OOP) principles. This branch serves as a Proof of Concept (POC).
+      Configuration and Execution:
+      Users can configure hyperparameters via an INI file and run tests. Results and intermediate outputs are printed to the console.
+**# Data Grouping and Analysis:**
+      The framework divides data into groups and examines the standard deviation of variables.
+      A mechanism was developed to run on a small dataset, train a model, and save it as a job for later use.
+**# Job Management:**
+      The job system allows users to start from the middle, save results, and continue training the model when there is drift or high RMSE.
+**# Cloud Integration:**
+    Firebase is used to store data on the cloud, enabling examination of important settings among different teams.
+**# Continuous Development:**
+    The project incorporates ML and Exploratory Data Analysis (EDA) content, exploring methods suitable for production environments.
+**# Future Enhancements**
+    1.Implement more advanced functional features.
+    2.Improve the automation framework’s robustness and scalability.
+    3.Enhance the user interface for better configuration and monitoring.
+                      
+                      
+                      
+More details:              
                       ***ML -SUPER REGRESSOR - RANDOM FOREST***
 
 1.The project is a way to conduct an automation framework with research on notebook.
