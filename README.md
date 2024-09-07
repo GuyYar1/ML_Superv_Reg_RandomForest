@@ -40,7 +40,7 @@ attached:  ML_Superv_Reg_RandomForest.pptx
 **# Future Enhancements**
 
     1. Fix Bugs (known issue)
-    1.Implement more advanced functional features.
+    2.Implement more advanced functional features.
     3.Improve the automation framework’s robustness and scalability.
     4.Enhance the user interface for better configuration and monitoring.
                
