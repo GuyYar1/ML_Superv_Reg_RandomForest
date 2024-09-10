@@ -1,20 +1,76 @@
+**Project Overview**
+
+
+This project aims to develop an automated machine learning (ML) framework using Python. The framework leverages INI files for configuration, job tasks, PKL files for data storage, and various datasets to create an automated ML workflow. The primary focus is on enhancing the automation framework to handle more advanced tasks. This framework can be referred to as an Automated Random Forest Ensemble Framework. 
+
+
+**# Key Components**
+
+   **System Presentation:**
+
+    ML_Superv_Reg_RandomForest.pptx -  attched.
+
+  **Data Exploration and Engineering:**
+  
+        Initial data exploration and feature engineering were performed manually, as documented in the notebook “2024-07-13 FE-10.ipynb”.
+        The dataset used includes excavator data from Kaggle.
+        Automation Framework:
+        Developed an automation framework that performs Random Forest ML regression based on insights from manual research.
+        The framework exposes parameters via an INI file and includes tuning parameters derived from data engineering.
+        
+**# Workflow:**
+
+      The framework allows loading any X data and y target for prediction, running the entire workflow of training, testing, and validation.
+      It supports additional functional features for enhanced automation.
+      Explanation of the Automation Framework
+**# Refactoring and OOP Approach:**
+
+      A new branch was created to refactor the framework using Object-Oriented Programming (OOP) principles. This branch serves as a Proof of Concept (POC).
+      Configuration and Execution:
+      Users can configure hyperparameters via an INI file and run tests. Results and intermediate outputs are printed to the console.
+**# Data Grouping and Analysis:**
+
+      The framework divides data into groups and examines the standard deviation of variables.
+      A mechanism was developed to run on a small dataset, train a model, and save it as a job for later use.
+**# Job Management:**
+
+      The job system allows users to start from the middle, save results, and continue training the model when there is drift or high RMSE.
+**# Cloud Integration:**
+
+    Firebase is used to store data on the cloud, enabling examination of important settings among different teams.
+**# Continuous Development:**
+
+    The project incorporates ML and Exploratory Data Analysis (EDA) content, exploring methods suitable for production environments.
+**# Future Enhancements**
+
+    1. Fix Bugs (known issue)
+    2.Implement more advanced functional features.
+    3.Improve the automation framework’s robustness and scalability.
+    4.Enhance the user interface for better configuration and monitoring.
+               
+                      
+                      
+More details:              
                       ***ML -SUPER REGRESSOR - RANDOM FOREST***
 
-1.The project is a way to conduct an automation framework.
-2.The data exploration -EDA should be done manualy by data message.
-3.I develop an automation that perform the Random Forest ML regressor. the framework expose some parameters on INI file and some tuning parameters that came from Data eng. in the level of the drievr.
-4.I would like to do refactor on another branch that took the OOP approach , this branch is POC.
-5.User config hyper params by INI file and run the test. results and mid results are printed in the console.
-6.The logic is to devide the data to groups and examine the STD of the vartaiables.
-7.in such case i develop a mechnisim that run on a small data set and trained a model that save into a job that later on loaded to the program. there was an issue to bubble the reference to other areas  due to some issue.
-8.The job let the user start from the midddle or ssave results and continue to train the model when there is drift or the model is with high RMSE.
-9.I use Fire base that wrote all the data on the cloud and let us examine which settable are most important among other teams.
-10. I took the entire ML -EDA content  that was learned and develop it and explore other methods that are working on the production.
-11. the semantic that data  is trained data and when we use test and data we should look on the trained data and decide how to fill or handle the test \valid data.
-12. model comes from traing and the trainning determind how the model knew the world of the data frame and feature. so data should be simmilar to the trained data.
-13. in production we will have sample or few data to predict so we must trained and allow the model learned well and let him realy learn. RMSE Train~RMSE Test. 
-14. There is no RMSE of VALID due to that valid  is not known so therere is no known value to calculate the RMSE.
+1.The project is a way to conduct an automation framework with research on notebook.
+2.The data exploration and Engineering were done manualy, look please on the notebook attached: "2024-07-13  FE-10.ipynb"
+3.I develop an automation that perform the Random Forest ML regressor based on feedbacks from the manually research. the framework expose some parameters on INI file and some tuning parameters that came from Data eng. in the level of the drievr.
+4.It allows to load any X data and y target predicted and run the whole workflow of training testing and validation. There are more functional features to implement.
 
+**Explanation on the automation framework is here**:
+  1.I would like to do refactor on another branch that took the OOP approach , this branch is POC.
+  2.User config hyper params by INI file and run the test. results and mid results are printed in the console.
+  3.The logic is to devide the data to groups and examine the STD of the vartaiables.
+  4.in such case i develop a mechnisim that run on a small data set and trained a model that save into a job that later on loaded to the program. there was an issue to bubble the reference to other areas  due to some issue.
+  5.The job let the user start from the midddle or ssave results and continue to train the model when there is drift or the model is with high RMSE.
+  6.I use Fire base that wrote all the data on the cloud and let us examine which settable are most important among other teams.
+  7. I took the entire ML -EDA content  that was learned and develop it and explore other methods that are working on the production.
+  8. the semantic that data  is trained data and when we use test and data we should look on the trained data and decide how to fill or handle the test \valid data.
+  9. model comes from traing and the trainning determind how the model knew the world of the data frame and feature. so data should be simmilar to the trained data.
+  10. in production we will have sample or few data to predict so we must trained and allow the model learned well and let him realy learn. RMSE Train~RMSE Test. 
+  11. There is no RMSE of VALID due to that valid  is not known so therere is no known value to calculate the RMSE.
+  
 
 Details:
 config file is ready to use, but not fully ready with Hyper param.
@@ -25,10 +81,10 @@ Submission csv file as limitation  of 11573. error if higher rows: "Evaluation E
 
 Meeting minutes: 
 
-0. work on Feature engeniring 
+0. work on Feature engeniring -Done
 1. share git - Done 
-2. Add Framework capabilities - In progress { PKL is ready for deployment, INI file )
-3. cloud Virtual Machine (VM)  - @ Lior To DO
+2. Add Framework capabilities - Done.
+3. cloud Virtual Machine (VM)  -On Hold
 
 
 
